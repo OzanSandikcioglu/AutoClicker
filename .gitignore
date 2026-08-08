@@ -1,0 +1,13 @@
+# PyInstaller & Build outputs
+build/
+dist/
+*.spec
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local IDE config
+.vs/
+.idea/
+.vscode/
