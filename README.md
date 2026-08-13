@@ -50,9 +50,9 @@ build.bat
 ```
 *Or manually compile using PyInstaller:*
 ```bash
-pyinstaller --onefile --noconsole --uac-admin --name AutoClicker auto_clicker.py
+pyinstaller --onedir --noconsole --uac-admin --version-file version_info.txt --name AutoClicker auto_clicker.py
 ```
-The compiled executable will be located in the `dist/` directory.
+The compiled executable will be located in the `dist/AutoClicker/` directory. Distribute the entire `AutoClicker` folder as a zip.
 
 ---
 

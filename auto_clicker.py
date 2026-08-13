@@ -853,20 +853,11 @@ class AutoClicker:
         sys.exit(0)
 
 
-def is_admin():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
-        return False
-
 # --- Entry Point --------------------------------------------------------------
+# NOTE: Admin elevation (UAC) is now handled by the embedded Windows manifest
+# via PyInstaller's --uac-admin flag. No need for runtime ShellExecuteW.
 
 if __name__ == "__main__":
-    # Automatically request admin privileges if not running as admin
-    if not is_admin():
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-        sys.exit(0)
-
     root = tk.Tk()
     root.update_idletasks()
     sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
