@@ -16,7 +16,7 @@ if exist auto_clicker.spec del auto_clicker.spec
 
 echo.
 echo [3/4] EXE dosyasi olusturuluyor (onedir modu)...
-python -m PyInstaller --onedir --noconsole --uac-admin --name AutoClicker --version-file version_info.txt auto_clicker.py
+python -m PyInstaller -y --onedir --noconsole --uac-admin --name AutoClicker --version-file version_info.txt auto_clicker.py
 
 echo.
 echo [4/4] Temizlik yapiliyor...
