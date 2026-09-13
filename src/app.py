@@ -15,16 +15,18 @@ from src.translations import TRANSLATIONS, CLICK_KEYS, MBTN_KEYS, LANG_ORDER
 from src.themes import THEMES
 from src.mouse import (HOLD_SECONDS, INJECT_TAG, begin_high_resolution_timer,
                        end_high_resolution_timer, is_injected_event, keep_awake,
-                       win32_click_mouse, win32_press_mouse,
-                       win32_release_mouse)
+                       top_level_at, top_level_of, win32_click_mouse,
+                       win32_move_mouse, win32_press_mouse, win32_release_mouse)
 from src.hotkey import get_key_name, get_mouse_name, is_mouse_hotkey
 from src.elevation import is_elevated, relaunch_as_admin
+from src.pattern import PatternRecorder
 
 
 class AutoClicker:
-    WIDTH, HEIGHT = 440, 680
+    WIDTH, HEIGHT = 440, 726
     MIN_INTERVAL = 0.001      # fastest the interval boxes may ask for
     DEFAULT_INTERVAL = 0.1    # used when every box is empty or zero
+    MOVE_SETTLE = 0.015       # let a window notice the pointer before clicking
 
     def __init__(self, root):
         self.root = root
@@ -53,6 +55,10 @@ class AutoClicker:
         self._hotkey_held = False
         self._pump_id = None
         self.mouse_kb = None        # low level mouse hook, only while needed
+        self.mode = "clicker"
+        self.recorder = PatternRecorder()
+        self.recording = False
+        self._root_hwnd = None
         self._cfg = {"interval": self.DEFAULT_INTERVAL,
                      "btn": "left", "type": "single"}
 
@@ -63,6 +69,11 @@ class AutoClicker:
         self.v_ms = tk.StringVar(value="100")
         self.v_click_type = tk.StringVar(value="single")
         self.v_mbtn = tk.StringVar(value="left")
+        self.v_repeat = tk.StringVar(value="forever")
+        self.v_dur_h = tk.StringVar(value="0")
+        self.v_dur_m = tk.StringVar(value="5")
+        self.v_dur_s = tk.StringVar(value="0")
+        self.v_gap = tk.StringVar(value="500")
         
         # -- Hotkey binding state --
         self.v_hotkey_str = "F6"
@@ -125,11 +136,15 @@ class AutoClicker:
 
         self._build_header()
         self._build_toolbar()
+        self._build_mode_tabs()
         self._build_interval()
         self._build_settings()
+        self._build_pattern()
+        self._build_repeat()
         self._build_button()
         self._build_status()
         self._build_admin()
+        self._set_mode(self.mode)
         self._install_click_guard()
 
     # --- Self-click guard -----------------------------------------------------
@@ -294,7 +309,6 @@ class AutoClicker:
     def _build_interval(self):
         p = self.w["main"]
         outer = tk.Frame(p, padx=1, pady=1)
-        outer.pack(fill="x", pady=(0, 8))
         self.w["int_outer"] = outer
 
         card = tk.Frame(outer, padx=14, pady=10)
@@ -344,7 +358,6 @@ class AutoClicker:
     def _build_settings(self):
         p = self.w["main"]
         outer = tk.Frame(p, padx=1, pady=1)
-        outer.pack(fill="x", pady=(0, 8))
         self.w["set_outer"] = outer
 
         card = tk.Frame(outer, padx=14, pady=10)
@@ -408,6 +421,202 @@ class AutoClicker:
         self.w["hk_btn"] = tk.Button(r3, text=self.v_hotkey_str, font=("Consolas", 9, "bold"),
                                      relief="flat", width=14, cursor="hand2", command=self._start_binding)
         self.w["hk_btn"].pack(side="left", padx=(4, 0))
+
+    # --- Mode tabs ------------------------------------------------------------
+
+    MODE_CARDS = {"clicker": ("int_outer", "set_outer"),
+                  "pattern": ("pat_outer", "rep_outer")}
+
+    def _build_mode_tabs(self):
+        p = self.w["main"]
+        bar = tk.Frame(p)
+        bar.pack(fill="x", pady=(0, 8))
+        self.w["mode_bar"] = bar
+
+        self.mode_btns = {}
+        for key in ("clicker", "pattern"):
+            btn = tk.Label(bar, text=self._t(f"mode_{key}"), font=("Segoe UI", 9, "bold"),
+                           padx=16, pady=5, cursor="hand2")
+            btn.pack(side="left", padx=(0, 4))
+            btn.bind("<Button-1>", lambda e, k=key: self._set_mode(k))
+            self.mode_btns[key] = btn
+
+    def _style_mode_tabs(self):
+        for key, btn in self.mode_btns.items():
+            if key == self.mode:
+                btn.configure(bg=self._c("accent"), fg="#ffffff")
+            else:
+                btn.configure(bg=self._c("bg_input"), fg=self._c("text_secondary"))
+
+    def _set_mode(self, mode):
+        """Swap which pair of cards is on screen. Not while something runs."""
+        if self.clicking or self.recording:
+            return
+        self.mode = mode
+        for keys in self.MODE_CARDS.values():
+            for key in keys:
+                self.w[key].pack_forget()
+        for key in self.MODE_CARDS[mode]:
+            self.w[key].pack(fill="x", pady=(0, 8), before=self.w["bf"])
+        self._style_mode_tabs()
+        self._draw_btn()
+
+    # --- Pattern card ---------------------------------------------------------
+
+    def _build_pattern(self):
+        p = self.w["main"]
+        outer = tk.Frame(p, padx=1, pady=1)
+        self.w["pat_outer"] = outer
+
+        card = tk.Frame(outer, padx=14, pady=10)
+        card.pack(fill="both")
+        self.w["pat_card"] = card
+
+        tr = tk.Frame(card)
+        tr.pack(fill="x", pady=(0, 8))
+        self.w["pat_tr"] = tr
+
+        self.w["pat_dot"] = tk.Canvas(tr, width=8, height=8, highlightthickness=0)
+        self.w["pat_dot"].pack(side="left", padx=(0, 8), pady=4)
+        self.w["pat_title"] = tk.Label(tr, text=self._t("pattern_title"),
+                                       font=("Segoe UI", 10, "bold"))
+        self.w["pat_title"].pack(side="left")
+        self.w["pat_count"] = tk.Label(tr, text="", font=("Segoe UI", 8))
+        self.w["pat_count"].pack(side="right")
+
+        row = tk.Frame(card)
+        row.pack(fill="x")
+        self.w["pat_row"] = row
+
+        self.w["rec_btn"] = tk.Button(row, text=self._t("record"),
+                                      font=("Segoe UI", 9, "bold"), relief="flat",
+                                      width=14, cursor="hand2",
+                                      command=self._toggle_recording)
+        self.w["rec_btn"].pack(side="left")
+        self.w["clr_btn"] = tk.Button(row, text=self._t("clear"), font=("Segoe UI", 9),
+                                      relief="flat", width=10, cursor="hand2",
+                                      command=self._clear_pattern)
+        self.w["clr_btn"].pack(side="right")
+
+        self.w["pat_hint"] = tk.Label(card, text=self._t("pattern_hint"),
+                                      font=("Segoe UI", 8), anchor="w",
+                                      justify="left", wraplength=356)
+        self.w["pat_hint"].pack(fill="x", pady=(7, 7))
+
+        self.w["pat_list"] = tk.Listbox(card, height=5, font=("Consolas", 8),
+                                        relief="flat", highlightthickness=0,
+                                        activestyle="none", borderwidth=0,
+                                        selectmode="none")
+        self.w["pat_list"].pack(fill="x")
+
+    # --- Repeat card ----------------------------------------------------------
+
+    def _build_repeat(self):
+        p = self.w["main"]
+        outer = tk.Frame(p, padx=1, pady=1)
+        self.w["rep_outer"] = outer
+
+        card = tk.Frame(outer, padx=14, pady=10)
+        card.pack(fill="both")
+        self.w["rep_card"] = card
+
+        tr = tk.Frame(card)
+        tr.pack(fill="x", pady=(0, 8))
+        self.w["rep_tr"] = tr
+        self.w["rep_dot"] = tk.Canvas(tr, width=8, height=8, highlightthickness=0)
+        self.w["rep_dot"].pack(side="left", padx=(0, 8), pady=4)
+        self.w["rep_title"] = tk.Label(tr, text=self._t("repeat_title"),
+                                       font=("Segoe UI", 10, "bold"))
+        self.w["rep_title"].pack(side="left")
+
+        r1 = tk.Frame(card)
+        r1.pack(fill="x")
+        self.w["rep_r1"] = r1
+        self.w["rb_forever"] = tk.Radiobutton(r1, text=self._t("repeat_forever"),
+                                              variable=self.v_repeat, value="forever",
+                                              font=("Segoe UI", 9), highlightthickness=0)
+        self.w["rb_forever"].pack(side="left")
+
+        r2 = tk.Frame(card)
+        r2.pack(fill="x", pady=(4, 0))
+        self.w["rep_r2"] = r2
+        self.w["rb_duration"] = tk.Radiobutton(r2, text=self._t("repeat_duration"),
+                                               variable=self.v_repeat, value="duration",
+                                               font=("Segoe UI", 9), highlightthickness=0)
+        self.w["rb_duration"].pack(side="left")
+        for key, var in (("hours", self.v_dur_h), ("minutes", self.v_dur_m),
+                         ("seconds", self.v_dur_s)):
+            entry = tk.Entry(r2, textvariable=var, width=3, font=("Consolas", 9, "bold"),
+                             relief="flat", justify="center", highlightthickness=0,
+                             validate="key", validatecommand=self._vcmd)
+            entry.pack(side="left", padx=(6, 2), ipady=2)
+            self.w[f"dur_{key}"] = entry
+            label = tk.Label(r2, text=self._t(key), font=("Segoe UI", 7))
+            label.pack(side="left")
+            self.w[f"durl_{key}"] = label
+
+        r3 = tk.Frame(card)
+        r3.pack(fill="x", pady=(8, 0))
+        self.w["rep_r3"] = r3
+        self.w["gap_lbl"] = tk.Label(r3, text=self._t("repeat_gap"), font=("Segoe UI", 9))
+        self.w["gap_lbl"].pack(side="left")
+        self.w["gap_entry"] = tk.Entry(r3, textvariable=self.v_gap, width=6,
+                                       font=("Consolas", 9, "bold"), relief="flat",
+                                       justify="center", highlightthickness=0,
+                                       validate="key", validatecommand=self._vcmd)
+        self.w["gap_entry"].pack(side="left", padx=(8, 2), ipady=2)
+        self.w["gap_unit"] = tk.Label(r3, text=self._t("milliseconds"), font=("Segoe UI", 7))
+        self.w["gap_unit"].pack(side="left")
+
+    # --- Recording ------------------------------------------------------------
+
+    def _toggle_recording(self):
+        if self.clicking:
+            return
+        if self.recording:
+            self._stop_recording()
+        else:
+            self._start_recording()
+
+    def _start_recording(self):
+        self._root_hwnd = top_level_of(self.root.winfo_id())
+        self.recorder.start()
+        self.recording = True
+        self._sync_mouse_listener()
+        self.w["st_lbl"].config(text=self._t("recording"), fg=self._c("accent_gold"))
+        self._refresh_pattern_ui()
+
+    def _stop_recording(self):
+        self.recording = False
+        self._sync_mouse_listener()
+        self.w["st_lbl"].config(text=self._t("stopped"), fg=self._c("text_secondary"))
+        self._refresh_pattern_ui()
+
+    def _clear_pattern(self):
+        if self.clicking or self.recording:
+            return
+        self.recorder.clear()
+        self._refresh_pattern_ui()
+
+    def _point_is_ours(self, x, y):
+        """True when a click landed on the AutoClicker window itself."""
+        try:
+            return top_level_at(x, y) == self._root_hwnd
+        except Exception:
+            return False
+
+    def _refresh_pattern_ui(self):
+        steps = list(self.recorder.steps)
+        box = self.w["pat_list"]
+        box.delete(0, "end")
+        for index, step in enumerate(steps, 1):
+            box.insert("end", f"{index:>3}. ({step.x:>5},{step.y:>5})  "
+                              f"{self._t(step.button):<6} +{step.delay:.2f}s")
+        box.see("end")
+        self.w["pat_count"].config(text=f"{len(steps)} {self._t('steps')}")
+        self.w["rec_btn"].config(
+            text=self._t("stop_record") if self.recording else self._t("record"),
+            fg=self._c("red") if self.recording else self._c("accent"))
 
     # --- Toggle Button --------------------------------------------------------
 
@@ -630,6 +839,47 @@ class AutoClicker:
         self.w["cnt_lbl"].configure(bg=card, fg=t2)
         self.w["cnt_val"].configure(bg=card, fg=self._c("accent_gold"))
 
+        # Pattern card
+        self.w["pat_outer"].configure(bg=brd)
+        for k in ["pat_card", "pat_tr", "pat_row"]:
+            self.w[k].configure(bg=card)
+        self.w["pat_title"].configure(bg=card, fg=acc)
+        pdot = self.w["pat_dot"]
+        pdot.configure(bg=card)
+        pdot.delete("all")
+        pdot.create_oval(1, 1, 7, 7, fill=acc, outline="")
+        self.w["pat_count"].configure(bg=card, fg=t2)
+        self.w["pat_hint"].configure(bg=card, fg=t2)
+        self.w["rec_btn"].configure(bg=inp, activebackground=acc, activeforeground="#ffffff")
+        self.w["clr_btn"].configure(bg=inp, fg=t2, activebackground=acc,
+                                    activeforeground="#ffffff")
+        self.w["pat_list"].configure(bg=inp, fg=t1, selectbackground=inp,
+                                     selectforeground=t1)
+
+        # Repeat card
+        self.w["rep_outer"].configure(bg=brd)
+        for k in ["rep_card", "rep_tr", "rep_r1", "rep_r2", "rep_r3"]:
+            self.w[k].configure(bg=card)
+        self.w["rep_title"].configure(bg=card, fg=acc)
+        rdot = self.w["rep_dot"]
+        rdot.configure(bg=card)
+        rdot.delete("all")
+        rdot.create_oval(1, 1, 7, 7, fill=self._c("accent2"), outline="")
+        for k in ["rb_forever", "rb_duration"]:
+            self.w[k].configure(bg=card, fg=t1, selectcolor=inp,
+                                activebackground=card, activeforeground=acc)
+        for key in ["hours", "minutes", "seconds"]:
+            self.w[f"dur_{key}"].configure(bg=inp, fg=acc, insertbackground=acc)
+            self.w[f"durl_{key}"].configure(bg=card, fg=t2)
+        self.w["gap_lbl"].configure(bg=card, fg=tl)
+        self.w["gap_entry"].configure(bg=inp, fg=acc, insertbackground=acc)
+        self.w["gap_unit"].configure(bg=card, fg=t2)
+
+        # Mode tabs
+        self.w["mode_bar"].configure(bg=bg)
+        self._style_mode_tabs()
+        self._refresh_pattern_ui()
+
         # Administrator notice
         tone = self._c("green") if self.elevated else self._c("accent_gold")
         self.w["adm_outer"].configure(bg=brd)
@@ -689,6 +939,20 @@ class AutoClicker:
 
         self.w["cnt_lbl"].config(text=self._t("clicks"))
 
+        for key, btn in self.mode_btns.items():
+            btn.config(text=self._t(f"mode_{key}"))
+        self.w["pat_title"].config(text=self._t("pattern_title"))
+        self.w["pat_hint"].config(text=self._t("pattern_hint"))
+        self.w["clr_btn"].config(text=self._t("clear"))
+        self.w["rep_title"].config(text=self._t("repeat_title"))
+        self.w["rb_forever"].config(text=self._t("repeat_forever"))
+        self.w["rb_duration"].config(text=self._t("repeat_duration"))
+        self.w["gap_lbl"].config(text=self._t("repeat_gap"))
+        self.w["gap_unit"].config(text=self._t("milliseconds"))
+        for key in ["hours", "minutes", "seconds"]:
+            self.w[f"durl_{key}"].config(text=self._t(key))
+        self._refresh_pattern_ui()
+
         self.w["adm_lbl"].config(
             text=self._t("admin_ok" if self.elevated else "admin_warn"))
         if not self.elevated:
@@ -717,6 +981,26 @@ class AutoClicker:
     def _get_mbtn(self):
         return self.v_mbtn.get()
 
+    def _get_duration(self):
+        """Seconds the pattern should keep repeating, or None for no limit."""
+        if self.v_repeat.get() != "duration":
+            return None
+        total = 0.0
+        for var, factor in ((self.v_dur_h, 3600.0), (self.v_dur_m, 60.0),
+                            (self.v_dur_s, 1.0)):
+            try:
+                total += max(int(var.get() or 0), 0) * factor
+            except (ValueError, tk.TclError):
+                continue
+        return total
+
+    def _get_gap(self):
+        """Pause between one pass of the pattern and the next, in seconds."""
+        try:
+            return max(int(self.v_gap.get() or 0), 0) / 1000.0
+        except (ValueError, tk.TclError):
+            return 0.5
+
     def _snapshot_config(self):
         """Copy the Tk variables into plain values for the worker thread.
 
@@ -725,7 +1009,11 @@ class AutoClicker:
         """
         self._cfg = {"interval": self._get_interval(),
                      "btn": self._get_mbtn(),
-                     "type": self.v_click_type.get()}
+                     "type": self.v_click_type.get(),
+                     "mode": self.mode,
+                     "steps": tuple(self.recorder.steps),
+                     "gap": self._get_gap(),
+                     "duration": self._get_duration()}
         return self._cfg
 
     def _post(self, fn):
@@ -808,6 +1096,42 @@ class AutoClicker:
                 next_at = now      # fell behind, restart the schedule
             self._stop_evt.wait(next_at - now)
 
+    def _pattern_loop(self):
+        """Replay the recorded clicks: move, click, wait, over and over."""
+        cfg = self._cfg
+        steps, limit = cfg["steps"], cfg["duration"]
+        started = time.perf_counter()
+        begin_high_resolution_timer()
+        keep_awake(True)
+        try:
+            while not self._stop_evt.is_set():
+                for step in steps:
+                    if step.delay and self._stop_evt.wait(step.delay):
+                        return
+                    win32_move_mouse(step.x, step.y)
+                    # give the window under the pointer a moment to notice the
+                    # move, or the click can land on whatever was there before
+                    if self._stop_evt.wait(self.MOVE_SETTLE):
+                        return
+                    if not win32_click_mouse(step.button, count=1):
+                        self._report_blocked()
+                    self.click_count += 1
+                    if limit is not None and time.perf_counter() - started >= limit:
+                        return
+                if self._stop_evt.wait(self._cfg["gap"]):
+                    return
+                if limit is not None and time.perf_counter() - started >= limit:
+                    return
+        finally:
+            keep_awake(False)
+            end_high_resolution_timer()
+            self._post(self._finish_run)
+
+    def _finish_run(self):
+        """The worker stopped by itself, so catch the UI up with it."""
+        if self.clicking:
+            self._stop()
+
     def _report_blocked(self):
         """Windows refused our input (usually an elevated window has focus)."""
         if self._input_blocked:
@@ -825,7 +1149,11 @@ class AutoClicker:
             self._start()
 
     def _start(self):
-        if self.clicking:
+        if self.clicking or self.recording:
+            return
+        pattern = self.mode == "pattern"
+        if pattern and not len(self.recorder):
+            self.w["st_lbl"].config(text=self._t("no_pattern"), fg=self._c("red"))
             return
         self._join_worker()        # never leave two click loops running at once
         self._snapshot_config()
@@ -836,8 +1164,11 @@ class AutoClicker:
         self._stop_evt.clear()
         self._draw_btn()
         self._draw_st_dot()
-        self.w["st_lbl"].config(text=self._t("running"), fg=self._c("green"))
-        self.click_thread = threading.Thread(target=self._click_loop, daemon=True)
+        self.w["st_lbl"].config(
+            text=self._t("pattern_running" if pattern else "running"),
+            fg=self._c("green"))
+        self.click_thread = threading.Thread(
+            target=self._pattern_loop if pattern else self._click_loop, daemon=True)
         self.click_thread.start()
 
     def _stop(self):
@@ -875,7 +1206,7 @@ class AutoClicker:
         put this app in the path of every mouse event on the system for
         nothing.
         """
-        needed = self.binding_hotkey or self._hotkey_is_mouse()
+        needed = self.binding_hotkey or self._hotkey_is_mouse() or self.recording
         if needed and self.mouse_kb is None:
             self.mouse_kb = MouseListener(
                 on_click=self._on_mouse,
@@ -901,8 +1232,16 @@ class AutoClicker:
             return False
 
     def _on_mouse(self, x, y, button, pressed, injected=False):
-        """Mouse hook thread: side buttons can toggle the clicker."""
+        """Mouse hook thread: records clicks, or toggles on a side button."""
         if not pressed:
+            return
+        if self.recording:
+            # clicks on our own window belong to the UI, not to the pattern
+            if not self._point_is_ours(x, y):
+                if not self.recorder.add(x, y, getattr(button, "name", "")):
+                    self._post(self._stop_recording)   # pattern is full
+                else:
+                    self._post(self._refresh_pattern_ui)
             return
         name = get_mouse_name(button)
         if name is None:

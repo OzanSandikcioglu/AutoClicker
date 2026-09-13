@@ -90,6 +90,26 @@ kurulum yapmaz, kayıt defterine dokunmaz, başka hiçbir yere
 dosya yazmaz.
 
 
+7) DESEN MODU
+--------------------------------------------------------------
+Ust taraftaki "Desen" sekmesi, tek bir yere tekrar tekrar
+tiklamak yerine senin tikladigin yerleri sirayla kaydeder.
+
+  1. "Desen" sekmesine gec, "Kaydet"e bas.
+  2. Tekrarlanmasini istedigin yerlere sirayla tikla.
+  3. "Bitir"e bas. Liste adimlarla dolar.
+  4. "Durdurana kadar" ya da "Sure" sec, sonra F6'ya bas.
+
+Uygulama penceresine yaptigin tiklamalar kaydedilmez.
+Beklemelerin de kaydedilir: oynatirken sen ne kadar
+bekledi isen o kadar bekler.
+
+Oynatirken gercek imlec hareket eder. Calisirken fareye
+dokunma, durdurmak icin F6 kullan.
+
+Desenler sadece bellekte tutulur; uygulamayi kapatinca
+unutulur.
+
 --------------------------------------------------------------
 Güncel sürüm, kaynak kod ve daha ayrıntılı anlatım:
 https://github.com/OzanSandikcioglu/AutoClicker

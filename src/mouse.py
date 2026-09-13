@@ -64,6 +64,16 @@ user32.SendInput.argtypes = (wintypes.UINT, ctypes.POINTER(Input), ctypes.c_int)
 user32.SendInput.restype = wintypes.UINT
 user32.GetMessageExtraInfo.argtypes = ()
 user32.GetMessageExtraInfo.restype = wintypes.LPARAM
+user32.GetSystemMetrics.argtypes = (ctypes.c_int,)
+user32.GetSystemMetrics.restype = ctypes.c_int
+user32.GetCursorPos.argtypes = (ctypes.POINTER(wintypes.POINT),)
+user32.GetCursorPos.restype = wintypes.BOOL
+user32.WindowFromPoint.argtypes = (wintypes.POINT,)
+user32.WindowFromPoint.restype = wintypes.HWND
+user32.GetAncestor.argtypes = (wintypes.HWND, wintypes.UINT)
+user32.GetAncestor.restype = wintypes.HWND
+user32.SetCursorPos.argtypes = (ctypes.c_int, ctypes.c_int)
+user32.SetCursorPos.restype = wintypes.BOOL
 
 INPUT_MOUSE = 0
 
@@ -74,6 +84,15 @@ MOUSEEVENTF_RIGHTDOWN = 0x0008
 MOUSEEVENTF_RIGHTUP = 0x0010
 MOUSEEVENTF_MIDDLEDOWN = 0x0020
 MOUSEEVENTF_MIDDLEUP = 0x0040
+MOUSEEVENTF_MOVE = 0x0001
+MOUSEEVENTF_ABSOLUTE = 0x8000
+MOUSEEVENTF_VIRTUALDESK = 0x4000
+
+# Virtual screen metrics, so absolute moves land correctly on multi monitor
+# setups and on monitors placed left of or above the primary one.
+SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN = 76, 77
+SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN = 78, 79
+GA_ROOT = 2
 
 _DOWN_FLAGS = {"left": MOUSEEVENTF_LEFTDOWN,
                "right": MOUSEEVENTF_RIGHTDOWN,
@@ -86,10 +105,10 @@ _UP_FLAGS = {"left": MOUSEEVENTF_LEFTUP,
 HOLD_SECONDS = 0.020
 
 
-def _send(flags):
+def _send(flags, dx=0, dy=0):
     """Push a single tagged mouse event through SendInput. True if accepted."""
     inp = Input(type=INPUT_MOUSE,
-                ii=Input_I(mi=MouseInput(0, 0, 0, flags, 0, INJECT_TAG)))
+                ii=Input_I(mi=MouseInput(dx, dy, 0, flags, 0, INJECT_TAG)))
     return user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(Input)) == 1
 
 
@@ -132,6 +151,52 @@ def win32_click_mouse(btn_str, count=1, hold=HOLD_SECONDS, gap=None):
         if i < count - 1:
             _busy_sleep(gap)
     return ok
+
+
+def win32_move_mouse(x, y):
+    """Put the pointer on a screen position with a tagged absolute move.
+
+    SendInput is used rather than SetCursorPos because games that read the
+    input stream see this one and ignore the other.
+    """
+    left = user32.GetSystemMetrics(SM_XVIRTUALSCREEN)
+    top = user32.GetSystemMetrics(SM_YVIRTUALSCREEN)
+    width = max(user32.GetSystemMetrics(SM_CXVIRTUALSCREEN), 1)
+    height = max(user32.GetSystemMetrics(SM_CYVIRTUALSCREEN), 1)
+    # Absolute coordinates run 0..65535 across the virtual desktop, and Windows
+    # maps them back with pixel = value * size // 65536. Aiming at the middle of
+    # the pixel inverts that exactly; scaling by 65535/(size-1) misses by one
+    # pixel at many positions.
+    nx = min(max(int((int(x) - left + 0.5) * 65536 / width), 0), 65535)
+    ny = min(max(int((int(y) - top + 0.5) * 65536 / height), 0), 65535)
+    ok = _send(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
+               nx, ny)
+    # The normalised coordinates above round to the wrong pixel at some
+    # positions, and a pattern aimed at a small target cannot afford that.
+    # SetCursorPos takes plain pixels, so it lands exactly; the SendInput move
+    # still happened first, which is the one games watching the input stream
+    # actually see.
+    user32.SetCursorPos(int(x), int(y))
+    return ok
+
+
+def get_cursor_pos():
+    """Current pointer position as (x, y), or None if Windows refused."""
+    point = wintypes.POINT()
+    if user32.GetCursorPos(ctypes.byref(point)):
+        return point.x, point.y
+    return None
+
+
+def top_level_at(x, y):
+    """Handle of the top level window under a screen point."""
+    point = wintypes.POINT(int(x), int(y))
+    return user32.GetAncestor(user32.WindowFromPoint(point), GA_ROOT)
+
+
+def top_level_of(handle):
+    """Top level window a child handle belongs to."""
+    return user32.GetAncestor(handle, GA_ROOT)
 
 
 def is_injected_event():

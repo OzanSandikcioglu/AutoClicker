@@ -14,7 +14,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 ### 1. Dosyayı indir
 
-[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.3.0-win64.zip`** yazısına tıkla.
+[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.4.0-win64.zip`** yazısına tıkla.
 
 İndirme başlar. Dosya genelde **İndirilenler** klasörüne iner.
 
@@ -22,7 +22,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 İndirdiğin şey bir **zip dosyası**, yani içine bir sürü dosya konmuş sıkıştırılmış bir kutu. Önce kutuyu açman gerekiyor:
 
-1. `AutoClicker-v1.3.0-win64.zip` dosyasına **sağ tıkla**.
+1. `AutoClicker-v1.4.0-win64.zip` dosyasına **sağ tıkla**.
 2. **Tümünü ayıkla...** seçeneğine tıkla.
 3. Açılan pencerede **Ayıkla** düğmesine bas.
 4. Karşına yeni bir pencere açılır, içinde **AutoClicker** adlı bir klasör görürsün.
@@ -80,7 +80,28 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 | **BAŞLAT / DURDUR** | Kısayolla aynı iş. Çalışırken düğme turkuaza, durum ışığı yeşile döner. |
 | **Tıklama** | O anki çalıştırmada kaç tıklama gönderildiği. |
 | **Dil / Tema** | Dil düğmeleri ve karanlık/aydınlık anahtarı; ikisi de anında uygulanır. |
+| **Tıklayıcı / Desen** | Araç çubuğunun altındaki iki sekme. **Tıklayıcı** imlecin durduğu yere aynı tıklamayı tekrarlar; **Desen** kaydettiğin sırayı oynatır. Bir şey çalışırken sekme değişmez. |
 | **Yönetici şeridi** | En alttaki şerit. Yeşilse tıklamalar ekrandaki her şeye ulaşır. Turuncuysa ulaşamaz — **Yönetici olarak çalıştır** düğmesine bas. |
+
+---
+
+## 🔁 Desen Modu
+
+**Desen** sekmesi, tek bir yere üst üste tıklamak yerine senin tıkladığın yerleri kaydeder.
+
+1. **Desen** sekmesine geç ve **Kaydet**'e bas.
+2. Tekrarlanmasını istediğin şeyleri sırayla tıkla. Her tıklama; yeri, hangi fare tuşu olduğu ve öncesinde ne kadar beklediğinle birlikte kaydedilir.
+3. **Bitir**'e bas. Liste adımlarla dolar.
+4. **Durdurana kadar** ya da **Süre** seç, turlar arasındaki **Ara** değerini ayarla, START'a (veya kısayoluna) bas.
+
+| Ayrıntı | Davranış |
+| :--- | :--- |
+| AutoClicker penceresine tıklamalar | Kaydedilmez, yani **Bitir**'e basman desenin parçası olmaz. |
+| Kayıt sırasında yan tuşlar | Yok sayılır - tıklama motoru sadece sol, sağ ve ortayı gönderebiliyor. |
+| Kendi zamanlaman | Korunur. Oynatırken tıklamalar arasında senin beklediğin kadar bekler; tek bir bekleme en fazla 10 saniye sayılır. |
+| Uzunluk | Desen başına en fazla 200 tıklama. |
+| İmleç nerede kalır | Son tıkladığı noktada. Oynatma gerçek imleci hareket ettirir, o yüzden çalışırken fareye dokunma ve kısayolla durdur. |
+| Kaydetme | Desenler sadece bellekte tutulur. Uygulamayı kapatınca unutulur. |
 
 ---
 
@@ -89,6 +110,7 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 - **Oyunlarda çalışır:** Windows'un düşük seviyeli `SendInput` sistemini, oyun motorlarının kareyi yakalayabilmesi için özel bir basılı tutma gecikmesiyle kullanır (*Trove* ve başka MMO'larda denendi).
 - **İstediğin tuşu kısayol yapabilirsin:** Klavyeden herhangi bir tuş ya da farenin yan tuşu. Tuşu basılı tutmak bir kez tetikler, üst üste açıp kapatmaz.
 - **Farenin yan tuşları kısayol olabilir:** Oyuncu farelerindeki baş parmak tuşları (`Mouse 4` / `Mouse 5`) ve tekerlek tıklaması (`Mouse 3`). Uygulamanın kendi gönderdiği tıklamalar sayılmaz, ama fare yazılımının ilettiği makro tuşları çalışır.
+- **Desen modu:** Tıklamalarını sırasıyla kaydeder - nereye, hangi tuşla ve kaç saniye bekleyerek - sonra aynı sırayı sen durdurana kadar ya da belirlediğin süre boyunca tekrarlar.
 - **Üç tıklama türü:** Tek, çift veya basılı tutma — sol, sağ ya da orta tuşla.
 - **Basılı tutma modu:** Fare tuşunu basılı tutar ve oyun motorunun algılaması için sinyali 25 ms'de bir tazeler. Durdurduğunda veya uygulamayı kapattığında tuş **her zaman** bırakılır, asla basılı kalmaz.
 - **Hassas aralık:** Saat, dakika, saniye ve milisaniye. Zamanlama kaymaz ve çalışırken aralığı değiştirebilirsin.
@@ -105,7 +127,7 @@ GitHub'da iki ayrı indirme var ve bunlar birbirinin yerine geçmez:
 
 | Amacın | Ne yapmalısın | Eline ne geçer |
 | :--- | :--- | :--- |
-| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.3.0-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
+| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.4.0-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
 | **Kodu okumak / değiştirmek** | Yeşil **Code** düğmesi → *Download ZIP* | Sadece kaynak kod, ~70 KB. İçinde **uygulama yok**, kendin derlemen gerekir. |
 
 > Sayfanın üstündeki yeşil **Code** düğmesi herkesin ilk bastığı düğmedir ve sadece uygulamayı kullanmak istiyorsan **yanlış olanıdır**: sana Python dosyaları verir, uygulamayı değil.
@@ -175,6 +197,7 @@ auto_clicker.py        Giriş noktası; Tk penceresini ve uygulamayı oluşturur
 src/app.py             Arayüz, tema, tıklama döngüsü, kısayol yönetimi
 src/mouse.py           SendInput tıklama motoru, olay imzalama, zamanlayıcılar
 src/hotkey.py          pynput tuşlarını sabit isimlere çevirir
+src/pattern.py         Kaydedilen tık dizileri ve zamanlamaları
 src/elevation.py       Yönetici yetkisi kontrolü ve UAC ile yeniden başlatma
 src/themes.py          Karanlık ve aydınlık renk paletleri
 src/translations.py    Altı dilin arayüz metinleri

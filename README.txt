@@ -88,6 +88,25 @@ installs nothing, touches no registry keys, and writes no
 files anywhere else.
 
 
+7) PATTERN MODE
+--------------------------------------------------------------
+The "Pattern" tab at the top records where you click, instead
+of hitting one spot over and over.
+
+  1. Switch to "Pattern" and press "Record".
+  2. Click through what you want repeated, in order.
+  3. Press "Finish". The list fills in with the steps.
+  4. Choose "Until stopped" or "For", then press F6.
+
+Clicks on this app's own window are not recorded. Your pauses
+are recorded too: playback waits as long as you did.
+
+Playback moves the real mouse pointer. Keep your hand off the
+mouse while it runs and stop it with F6.
+
+Patterns are kept in memory only - closing the app forgets
+them.
+
 --------------------------------------------------------------
 Latest version, source code and fuller instructions:
 https://github.com/OzanSandikcioglu/AutoClicker
