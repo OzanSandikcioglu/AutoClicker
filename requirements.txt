@@ -1,2 +1,5 @@
+# Runtime dependency - this is all the app needs to run from source.
 pynput
-pyinstaller
+
+# Building the EXE additionally needs PyInstaller. build.bat installs it
+# for you, or: pip install pyinstaller

@@ -37,10 +37,23 @@ Clicks land wherever the mouse cursor happens to be - park the cursor on the tar
 
 ---
 
+## 📥 Which download do I need?
+
+GitHub offers two different downloads and they are not interchangeable:
+
+| You want to... | Do this | What you actually get |
+| :--- | :--- | :--- |
+| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.2.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
+| **Read or modify the code** | The green **Code** button → *Download ZIP*, or `git clone` | The source only, about 70 KB. It contains **no executable** - you would have to build one. |
+
+> The green **Code** button at the top of the page is the one most people press first, and it is the wrong one if you only want to run the clicker: it hands you Python files, not an app.
+
+---
+
 ## 🚀 How to Use (Pre-compiled EXE)
 
-1. Go to the **Releases** section of this repository.
-2. Download the `AutoClicker` zip archive.
+1. Open the [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) page.
+2. Download `AutoClicker-v1.2.0-win64.zip` from the **Assets** list.
 3. **Extract the whole folder.** `AutoClicker.exe` needs the `_internal` folder that sits next to it; copying the `.exe` out on its own will not start.
 4. Run `AutoClicker.exe` and accept the Windows User Account Control (UAC) prompt - it is required to send clicks into games.
 5. Set your interval, click type, and mouse button.
@@ -78,6 +91,7 @@ git clone https://github.com/OzanSandikcioglu/AutoClicker.git
 cd AutoClicker
 pip install -r requirements.txt
 ```
+That installs `pynput`, which is the only thing needed to run the app. PyInstaller is only required to build the EXE, and `build.bat` installs it on its own.
 
 ### 2. Run the App
 ```bash
