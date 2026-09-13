@@ -14,6 +14,7 @@ TRANSLATIONS = {
         "hotkey": "Hotkey:", "start": "START", "stop": "STOP",
         "stopped": "Stopped", "running": "Running...", "holding": "Holding...",
         "clicks": "Clicks:", "lang": "Lang", "theme": "Theme",
+        "press_key": "Press key...", "blocked": "Blocked by Windows",
     },
     "TR": {
         "name": "Türkçe", "subtitle": "Otomatik Tıklama Aracı",
@@ -25,6 +26,7 @@ TRANSLATIONS = {
         "hotkey": "Kısayol:", "start": "BAŞLAT", "stop": "DURDUR",
         "stopped": "Durduruldu", "running": "Çalışıyor...", "holding": "Basılı Tutuluyor...",
         "clicks": "Tıklama:", "lang": "Dil", "theme": "Tema",
+        "press_key": "Tuşa bas...", "blocked": "Windows engelliyor",
     },
     "DE": {
         "name": "Deutsch", "subtitle": "Automatisches Klick-Werkzeug",
@@ -36,6 +38,7 @@ TRANSLATIONS = {
         "hotkey": "Taste:", "start": "STARTEN", "stop": "STOPPEN",
         "stopped": "Gestoppt", "running": "Lauft...", "holding": "Gehalten...",
         "clicks": "Klicks:", "lang": "Sprache", "theme": "Thema",
+        "press_key": "Taste...", "blocked": "Von Windows blockiert",
     },
     "ES": {
         "name": "Espanol", "subtitle": "Herramienta de Clic Automatico",
@@ -47,6 +50,7 @@ TRANSLATIONS = {
         "hotkey": "Tecla:", "start": "INICIAR", "stop": "DETENER",
         "stopped": "Detenido", "running": "Ejecutando...", "holding": "Manteniendo...",
         "clicks": "Clics:", "lang": "Idioma", "theme": "Tema",
+        "press_key": "Pulsa tecla...", "blocked": "Bloqueado por Windows",
     },
     "FR": {
         "name": "Francais", "subtitle": "Outil de Clic Automatique",
@@ -58,6 +62,7 @@ TRANSLATIONS = {
         "hotkey": "Raccourci:", "start": "DEMARRER", "stop": "ARRETER",
         "stopped": "Arrete", "running": "En cours...", "holding": "Maintenu...",
         "clicks": "Clics:", "lang": "Langue", "theme": "Theme",
+        "press_key": "Touche...", "blocked": "Bloque par Windows",
     },
     "ZH": {
         "name": "Zhongwen", "subtitle": "Zi Dong Dian Ji Gong Ju",
@@ -69,6 +74,7 @@ TRANSLATIONS = {
         "hotkey": "Kuai Jie:", "start": "KAI SHI", "stop": "TING ZHI",
         "stopped": "Yi Ting Zhi", "running": "Yun Xing Zhong...", "holding": "An Zhu Zhong...",
         "clicks": "Dian Ji:", "lang": "Yu Yan", "theme": "Zhu Ti",
+        "press_key": "An Jian...", "blocked": "Windows Zu Zhi Le",
     },
 }
 

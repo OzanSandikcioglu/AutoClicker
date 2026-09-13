@@ -13,8 +13,5 @@ from src.app import AutoClicker
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.update_idletasks()
-    sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-    root.geometry(f"440x680+{(sw-440)//2}+{(sh-680)//2}")
-    app = AutoClicker(root)
+    app = AutoClicker(root)   # sizes and centres its own window
     root.mainloop()

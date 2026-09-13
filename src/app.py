@@ -4,24 +4,31 @@ Premium Tkinter UI with DirectInput support for games.
 """
 
 import threading
+import queue
 import time
-import sys
 import os
 import tkinter as tk
-from pynput.keyboard import Listener as KeyboardListener
+from pynput.keyboard import Key, Listener as KeyboardListener
 
 from src.translations import TRANSLATIONS, CLICK_KEYS, MBTN_KEYS, LANG_ORDER
 from src.themes import THEMES
-from src.mouse import win32_press_mouse, win32_release_mouse, win32_click_mouse
+from src.mouse import (HOLD_SECONDS, begin_high_resolution_timer,
+                       end_high_resolution_timer, is_injected_event, keep_awake,
+                       win32_click_mouse, win32_press_mouse,
+                       win32_release_mouse)
 from src.hotkey import get_key_name
 
 
 class AutoClicker:
+    WIDTH, HEIGHT = 440, 680
+    MIN_INTERVAL = 0.001      # fastest the interval boxes may ask for
+    DEFAULT_INTERVAL = 0.1    # used when every box is empty or zero
+
     def __init__(self, root):
         self.root = root
         self.root.title("AutoClicker")
-        self.root.geometry("440x680")
         self.root.resizable(False, False)
+        self._center_window()
 
         # -- State --
         self.lang = "EN"
@@ -30,6 +37,18 @@ class AutoClicker:
         self.click_count = 0
         self.click_thread = None
         self.holding = False
+
+        # -- Threading --
+        # The click worker and the keyboard listener never touch Tk directly:
+        # they push callables onto _ui_q, which _pump drains on the main thread.
+        self._stop_evt = threading.Event()
+        self._ui_q = queue.Queue()
+        self._shown_count = -1
+        self._input_blocked = False
+        self._hotkey_held = False
+        self._pump_id = None
+        self._cfg = {"interval": self.DEFAULT_INTERVAL,
+                     "btn": "left", "type": "single"}
 
         # -- Variables --
         self.v_hours = tk.StringVar(value="0")
@@ -59,11 +78,20 @@ class AutoClicker:
         self._apply_theme()
 
         # -- Keyboard listener --
-        self.kb = KeyboardListener(on_press=self._on_key)
+        self.kb = KeyboardListener(on_press=self._on_key,
+                                   on_release=self._on_key_release)
         self.kb.daemon = True
         self.kb.start()
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._pump()
+
+    def _center_window(self):
+        self.root.update_idletasks()
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        self.root.geometry(f"{self.WIDTH}x{self.HEIGHT}"
+                           f"+{max((sw - self.WIDTH) // 2, 0)}"
+                           f"+{max((sh - self.HEIGHT) // 2, 0)}")
 
     def _t(self, key):
         return TRANSLATIONS[self.lang].get(key, key)
@@ -77,6 +105,7 @@ class AutoClicker:
 
     def _build(self):
         self.root.configure(bg=self._c("bg_main"))
+        self._vcmd = (self.root.register(self._validate_number), "%P")
 
         # -- Top accent line (plain color, no emoji) --
         self.w["top_line"] = tk.Frame(self.root, height=3)
@@ -92,6 +121,40 @@ class AutoClicker:
         self._build_settings()
         self._build_button()
         self._build_status()
+        self._install_click_guard()
+
+    # --- Self-click guard -----------------------------------------------------
+
+    @staticmethod
+    def _validate_number(proposed):
+        """Keep the interval boxes numeric so the click loop always parses."""
+        return proposed == "" or (proposed.isascii() and proposed.isdigit()
+                                  and len(proposed) <= 6)
+
+    def _install_click_guard(self):
+        """Swallow the clicks we inject before any widget reacts to them.
+
+        Otherwise a cursor left resting over our own window means the injected
+        clicks press our own buttons - most visibly toggling the clicker off
+        again the instant it starts.
+        """
+        for seq in ("<Button-1>", "<ButtonRelease-1>", "<Double-Button-1>",
+                    "<Button-2>", "<ButtonRelease-2>",
+                    "<Button-3>", "<ButtonRelease-3>"):
+            self.root.bind_class("SelfClickGuard", seq, self._drop_injected)
+        self._tag_widget(self.root)
+
+    def _tag_widget(self, widget):
+        tags = widget.bindtags()
+        if "SelfClickGuard" not in tags:
+            widget.bindtags(("SelfClickGuard",) + tags)
+        for child in widget.winfo_children():
+            self._tag_widget(child)
+
+    @staticmethod
+    def _drop_injected(event):
+        if is_injected_event():
+            return "break"
 
     # --- Header --------------------------------------------------------------
 
@@ -153,7 +216,6 @@ class AutoClicker:
 
         self.lang_btns = {}
         for code in LANG_ORDER:
-            active = code == self.lang
             btn = tk.Label(
                 lf, text=code, font=("Segoe UI", 8, "bold"),
                 padx=6, pady=2, cursor="hand2"
@@ -257,7 +319,8 @@ class AutoClicker:
             self.w[f"eb_{key}"] = eb
 
             e = tk.Entry(eb, textvariable=var, width=5, font=("Consolas", 12, "bold"),
-                         relief="flat", justify="center", highlightthickness=0)
+                         relief="flat", justify="center", highlightthickness=0,
+                         validate="key", validatecommand=self._vcmd)
             e.pack(ipady=3)
             e.bind("<FocusIn>", lambda ev, b=eb: b.configure(bg=self._c("accent")))
             e.bind("<FocusOut>", lambda ev, b=eb: b.configure(bg=self._c("border")))
@@ -563,43 +626,123 @@ class AutoClicker:
     # =========================================================================
 
     def _get_interval(self):
-        try:
-            h = int(self.v_hours.get() or 0)
-            m = int(self.v_min.get() or 0)
-            s = int(self.v_sec.get() or 0)
-            ms = int(self.v_ms.get() or 0)
-            return max(h * 3600 + m * 60 + s + ms / 1000.0, 0.001)
-        except ValueError:
-            return 0.1
+        """Interval in seconds, read on the main thread only."""
+        total = 0.0
+        for var, factor in ((self.v_hours, 3600.0), (self.v_min, 60.0),
+                            (self.v_sec, 1.0), (self.v_ms, 0.001)):
+            try:
+                total += max(int(var.get() or 0), 0) * factor
+            except (ValueError, tk.TclError):
+                continue
+        if total <= 0:
+            # Every box empty or zero would mean "as fast as possible", which is
+            # never what somebody typing in the boxes meant to ask for.
+            return self.DEFAULT_INTERVAL
+        return max(total, self.MIN_INTERVAL)
 
     def _get_mbtn(self):
         return self.v_mbtn.get()
 
+    def _snapshot_config(self):
+        """Copy the Tk variables into plain values for the worker thread.
+
+        tkinter is not thread-safe, so the click loop must never read a
+        StringVar itself; the main thread refreshes this snapshot instead.
+        """
+        self._cfg = {"interval": self._get_interval(),
+                     "btn": self._get_mbtn(),
+                     "type": self.v_click_type.get()}
+        return self._cfg
+
+    def _post(self, fn):
+        """Queue a callable to run on the main thread (safe from any thread)."""
+        self._ui_q.put(fn)
+
+    def _pump(self):
+        """Drain background work and repaint the counter, on the main thread."""
+        while True:
+            try:
+                fn = self._ui_q.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                fn()
+            except tk.TclError:
+                pass
+
+        if self.click_count != self._shown_count:
+            self._shown_count = self.click_count
+            self.w["cnt_val"].config(text=str(self.click_count))
+
+        if self.clicking:
+            self._snapshot_config()   # interval edits apply while running
+
+        try:
+            self._pump_id = self.root.after(50, self._pump)
+        except tk.TclError:
+            self._pump_id = None      # window is gone
+
+    # --- Click worker ---------------------------------------------------------
+
     def _click_loop(self):
-        interval = self._get_interval()
-        btn = self._get_mbtn()
-        ct = self.v_click_type.get()
+        cfg = self._cfg
+        btn, ct = cfg["btn"], cfg["type"]
+        begin_high_resolution_timer()
+        keep_awake(True)
+        try:
+            if ct == "hold":
+                self._hold_loop(btn)
+            else:
+                self._repeat_loop(btn, 2 if ct == "double" else 1)
+        finally:
+            keep_awake(False)
+            end_high_resolution_timer()
 
-        if ct == "hold":
-            self.holding = True
-            self.click_count = 1
-            self.root.after(0, self._update_count)
-            self.root.after(0, lambda: self.w["st_lbl"].config(
-                text=self._t("holding"), fg=self._c("accent_gold")))
-            while self.clicking:
-                win32_press_mouse(btn)
-                time.sleep(0.025)  # Continuously reinforce hold down signal so the game engine registers it
+    def _hold_loop(self, btn):
+        self.holding = True
+        self._post(lambda: self.w["st_lbl"].config(
+            text=self._t("holding"), fg=self._c("accent_gold")))
+        self.click_count = 1
+        try:
+            while not self._stop_evt.is_set():
+                if not win32_press_mouse(btn):
+                    self._report_blocked()
+                # Keep reinforcing the down signal so game engines register it.
+                self._stop_evt.wait(0.025)
+        finally:
+            # Release from the thread that pressed, and only once the loop has
+            # really finished - releasing from _stop() could be overtaken by one
+            # last press and leave the button stuck down.
+            win32_release_mouse(btn)
+            self.holding = False
+
+    def _repeat_loop(self, btn, count):
+        next_at = time.perf_counter()
+        while not self._stop_evt.is_set():
+            interval = self._cfg["interval"]
+            # The 20ms button hold is what makes clicks land in games, but it
+            # also caps the rate; shrink it when a faster interval is asked for.
+            hold = (HOLD_SECONDS if interval >= 4 * HOLD_SECONDS
+                    else max(interval / 4.0, 0.001))
+            if not win32_click_mouse(btn, count=count, hold=hold):
+                self._report_blocked()
+            self.click_count += count
+
+            now = time.perf_counter()
+            next_at += interval
+            if next_at < now:
+                next_at = now      # fell behind, restart the schedule
+            self._stop_evt.wait(next_at - now)
+
+    def _report_blocked(self):
+        """Windows refused our input (usually an elevated window has focus)."""
+        if self._input_blocked:
             return
+        self._input_blocked = True
+        self._post(lambda: self.w["st_lbl"].config(
+            text=self._t("blocked"), fg=self._c("red")))
 
-        dbl = ct == "double"
-        while self.clicking:
-            win32_click_mouse(btn, count=2 if dbl else 1)
-            self.click_count += 1
-            self.root.after(0, self._update_count)
-            time.sleep(interval)
-
-    def _update_count(self):
-        self.w["cnt_val"].config(text=str(self.click_count))
+    # --- Start / stop ---------------------------------------------------------
 
     def _toggle(self):
         if self.clicking:
@@ -608,8 +751,15 @@ class AutoClicker:
             self._start()
 
     def _start(self):
+        if self.clicking:
+            return
+        self._join_worker()        # never leave two click loops running at once
+        self._snapshot_config()
         self.clicking = True
         self.click_count = 0
+        self._shown_count = -1
+        self._input_blocked = False
+        self._stop_evt.clear()
         self._draw_btn()
         self._draw_st_dot()
         self.w["st_lbl"].config(text=self._t("running"), fg=self._c("green"))
@@ -617,42 +767,114 @@ class AutoClicker:
         self.click_thread.start()
 
     def _stop(self):
+        if not self.clicking:
+            return
         self.clicking = False
-        if self.holding:
-            win32_release_mouse(self._get_mbtn())
-            self.holding = False
+        self._join_worker()
         self._draw_btn()
         self._draw_st_dot()
         self.w["st_lbl"].config(text=self._t("stopped"), fg=self._c("text_secondary"))
+
+    def _join_worker(self):
+        """Wait for the click thread to finish before anything else happens."""
+        self._stop_evt.set()
+        t, self.click_thread = self.click_thread, None
+        if t is not None and t.is_alive():
+            t.join(timeout=2.0)
+            if t.is_alive() or self.holding:
+                # Wedged worker: make sure no button is left held down.
+                try:
+                    win32_release_mouse(self._cfg.get("btn", "left"))
+                except Exception:
+                    pass
+                self.holding = False
+
+    # --- Hotkey ---------------------------------------------------------------
 
     def _start_binding(self):
         if self.clicking:
             return
         self.binding_hotkey = True
-        self.w["hk_btn"].configure(text="..." if self.lang != "TR" else "Tuşa basın...", fg=self._c("red"))
+        self.w["hk_btn"].configure(text=self._t("press_key"), fg=self._c("red"))
+
+    def _finish_binding(self, name):
+        self.v_hotkey_str = name
+        self.binding_hotkey = False
+        # The key just bound is still physically down; don't let its release or
+        # auto-repeat count as a toggle.
+        self._hotkey_held = True
+        self._update_hotkey_ui()
+
+    def _cancel_binding(self):
+        self.binding_hotkey = False
+        self._update_hotkey_ui()
 
     def _update_hotkey_ui(self):
         self.w["hk_btn"].configure(text=self.v_hotkey_str, fg=self._c("accent_gold"))
         self._draw_btn()
 
     def _on_key(self, key):
+        """Runs on the pynput listener thread - queue work, never touch Tk."""
         if self.binding_hotkey:
+            if key == Key.esc:
+                self.binding_hotkey = False
+                self._post(self._cancel_binding)
+                return
             name = get_key_name(key)
             if name:
-                self.v_hotkey_str = name
                 self.binding_hotkey = False
-                self.root.after(0, self._update_hotkey_ui)
+                self._post(lambda n=name: self._finish_binding(n))
             return
 
+        if get_key_name(key) != self.v_hotkey_str:
+            return
+        if self._hotkey_held:
+            return                 # Windows key auto-repeat, not a new press
+        self._hotkey_held = True
+        self._post(self._hotkey_toggle)
+
+    def _on_key_release(self, key):
         if get_key_name(key) == self.v_hotkey_str:
-            self.root.after(0, self._toggle)
+            self._hotkey_held = False
+
+    # Keys that put something into an entry box when pressed.
+    _EDIT_KEYS = {"Space", "Backspace", "Delete"}
+
+    def _hotkey_types_text(self):
+        name = self.v_hotkey_str
+        return len(name) == 1 or name.startswith("Num ") or name in self._EDIT_KEYS
+
+    def _hotkey_toggle(self):
+        # A hotkey bound to an ordinary character must not start the clicker
+        # while that character is being typed into an interval box. Stopping is
+        # never blocked - that one always has to work.
+        if (not self.clicking and self._hotkey_types_text()
+                and self._entry_has_focus()):
+            return
+        self._toggle()
+
+    def _entry_has_focus(self):
+        try:
+            return isinstance(self.root.focus_get(), tk.Entry)
+        except Exception:
+            return False
 
     def _on_close(self):
         self.clicking = False
-        if self.holding:
-            try: win32_release_mouse(self._get_mbtn())
-            except: pass
-        try: self.kb.stop()
-        except: pass
-        self.root.destroy()
-        sys.exit(0)
+        self._join_worker()
+        if self._pump_id is not None:
+            # Cancel the queued pump, otherwise Tcl runs it after destroy() has
+            # already deleted the callback and complains on the way out.
+            try:
+                self.root.after_cancel(self._pump_id)
+            except tk.TclError:
+                pass
+            self._pump_id = None
+        try:
+            self.kb.stop()
+        except Exception:
+            pass
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
