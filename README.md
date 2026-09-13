@@ -66,6 +66,11 @@ GitHub offers two different downloads and they are not interchangeable:
 **Windows Defender or my antivirus flags the download.**
 Auto clickers inject synthetic input, which is exactly what input-stealing malware does, so heuristic scanners flag them as a matter of course. The build is deliberately shipped as an unpacked `--onedir` folder with embedded version information to reduce this, but a fresh executable with no download reputation can still be flagged. Build it yourself from source (below) if you would rather not trust the release binary.
 
+**I ran it once, then the file disappeared - after closing it or after a restart.**
+The app did not delete itself: Windows Defender quarantined it. An unsigned executable whose whole job is injecting input is the exact shape its cloud protection ("block at first sight") and its potentially-unwanted-app filter act on, and that verdict often arrives *after* the first run or at the next scan - which is why the file seems to vanish on its own later. Open **Windows Security -> Protection history** to find the entry; if you trust the build you can restore it from there and add an exclusion.
+
+Passing the file around through chat apps makes this much more likely, because the copy arrives stamped as internet-sourced with no download reputation behind it. Send people the [Releases](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) link instead of the file itself. Note that auto-clicker blocking is a policy call, not always a mistaken one: Windows 11 enables potentially-unwanted-app blocking by default, so a machine can remove it while yours keeps it happily.
+
 **The status bar says "Blocked by Windows".**
 `SendInput` itself was rejected, which happens while the UAC dialog or the lock screen owns the secure desktop. Dismiss it and start again. Note that this message cannot appear for the integrity-level case described below: Windows discards that input without reporting any failure, which is what the administrator strip is there to catch.
 
