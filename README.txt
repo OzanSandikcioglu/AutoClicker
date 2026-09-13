@@ -95,10 +95,14 @@ of hitting one spot over and over.
 
   1. Switch to "Pattern" and press "Record".
   2. Click through what you want repeated, in order.
-  3. Press "Finish". The list fills in with the steps.
+  3. Press F6 to finish. (The window will have gone behind
+     what you clicked; the hotkey saves you hunting for it.
+     Pressing "Finish" on the window works too.)
   4. Choose "Until stopped" or "For", then press F6.
 
-Clicks on this app's own window are not recorded. Your pauses
+Clicks on this app's own window and on the taskbar are not
+recorded. If a stray click gets in, "Undo" drops the last
+step. Your pauses
 are recorded too: playback waits as long as you did.
 
 Playback moves the real mouse pointer. Keep your hand off the

@@ -74,6 +74,8 @@ user32.GetAncestor.argtypes = (wintypes.HWND, wintypes.UINT)
 user32.GetAncestor.restype = wintypes.HWND
 user32.SetCursorPos.argtypes = (ctypes.c_int, ctypes.c_int)
 user32.SetCursorPos.restype = wintypes.BOOL
+user32.GetClassNameW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+user32.GetClassNameW.restype = ctypes.c_int
 
 INPUT_MOUSE = 0
 
@@ -192,6 +194,26 @@ def top_level_at(x, y):
     """Handle of the top level window under a screen point."""
     point = wintypes.POINT(int(x), int(y))
     return user32.GetAncestor(user32.WindowFromPoint(point), GA_ROOT)
+
+
+#: Taskbar classes. A click here is the user getting back to a window, not
+#: something they want in their pattern.
+SHELL_CLASSES = frozenset({"Shell_TrayWnd",           # the taskbar itself
+                           "Shell_SecondaryTrayWnd",  # taskbars on other screens
+                           "TaskListThumbnailWnd"})   # its hover previews
+
+
+def window_class(handle):
+    """Window class name, or an empty string if Windows would not say."""
+    buf = ctypes.create_unicode_buffer(256)
+    if user32.GetClassNameW(handle, buf, 256):
+        return buf.value
+    return ""
+
+
+def is_shell_window(handle):
+    """True for the taskbar and the previews it pops up."""
+    return window_class(handle) in SHELL_CLASSES
 
 
 def top_level_of(handle):

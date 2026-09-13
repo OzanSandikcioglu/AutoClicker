@@ -15,7 +15,7 @@ from src.translations import TRANSLATIONS, CLICK_KEYS, MBTN_KEYS, LANG_ORDER
 from src.themes import THEMES
 from src.mouse import (HOLD_SECONDS, INJECT_TAG, begin_high_resolution_timer,
                        end_high_resolution_timer, is_injected_event, keep_awake,
-                       top_level_at, top_level_of, win32_click_mouse,
+                       is_shell_window, top_level_at, top_level_of, win32_click_mouse,
                        win32_move_mouse, win32_press_mouse, win32_release_mouse)
 from src.hotkey import get_key_name, get_mouse_name, is_mouse_hotkey
 from src.elevation import is_elevated, relaunch_as_admin
@@ -494,9 +494,13 @@ class AutoClicker:
                                       command=self._toggle_recording)
         self.w["rec_btn"].pack(side="left")
         self.w["clr_btn"] = tk.Button(row, text=self._t("clear"), font=("Segoe UI", 9),
-                                      relief="flat", width=10, cursor="hand2",
+                                      relief="flat", width=8, cursor="hand2",
                                       command=self._clear_pattern)
         self.w["clr_btn"].pack(side="right")
+        self.w["undo_btn"] = tk.Button(row, text=self._t("undo"), font=("Segoe UI", 9),
+                                       relief="flat", width=8, cursor="hand2",
+                                       command=self._undo_step)
+        self.w["undo_btn"].pack(side="right", padx=(0, 6))
 
         self.w["pat_hint"] = tk.Label(card, text=self._t("pattern_hint"),
                                       font=("Segoe UI", 8), anchor="w",
@@ -582,15 +586,35 @@ class AutoClicker:
         self._root_hwnd = top_level_of(self.root.winfo_id())
         self.recorder.start()
         self.recording = True
+        # The first click sends whatever is underneath to the front, and this
+        # window with it to the back. Staying on top means Finish is one click
+        # away instead of a trip through the taskbar.
+        self._set_topmost(True)
         self._sync_mouse_listener()
         self.w["st_lbl"].config(text=self._t("recording"), fg=self._c("accent_gold"))
         self._refresh_pattern_ui()
 
     def _stop_recording(self):
+        if not self.recording:
+            return
         self.recording = False
+        self._set_topmost(False)
         self._sync_mouse_listener()
         self.w["st_lbl"].config(text=self._t("stopped"), fg=self._c("text_secondary"))
         self._refresh_pattern_ui()
+
+    def _set_topmost(self, on):
+        try:
+            self.root.attributes("-topmost", bool(on))
+        except tk.TclError:
+            pass
+
+    def _undo_step(self):
+        """Remove the last recorded click, for when one lands by accident."""
+        if self.clicking:
+            return
+        if self.recorder.pop():
+            self._refresh_pattern_ui()
 
     def _clear_pattern(self):
         if self.clicking or self.recording:
@@ -598,12 +622,15 @@ class AutoClicker:
         self.recorder.clear()
         self._refresh_pattern_ui()
 
-    def _point_is_ours(self, x, y):
-        """True when a click landed on the AutoClicker window itself."""
+    def _should_record(self, x, y):
+        """False for clicks that are the user operating Windows, not clicking
+        a target: our own window, and the taskbar they used to get back to it.
+        """
         try:
-            return top_level_at(x, y) == self._root_hwnd
+            handle = top_level_at(x, y)
         except Exception:
-            return False
+            return True
+        return handle != self._root_hwnd and not is_shell_window(handle)
 
     def _refresh_pattern_ui(self):
         steps = list(self.recorder.steps)
@@ -851,8 +878,9 @@ class AutoClicker:
         self.w["pat_count"].configure(bg=card, fg=t2)
         self.w["pat_hint"].configure(bg=card, fg=t2)
         self.w["rec_btn"].configure(bg=inp, activebackground=acc, activeforeground="#ffffff")
-        self.w["clr_btn"].configure(bg=inp, fg=t2, activebackground=acc,
-                                    activeforeground="#ffffff")
+        for k in ["clr_btn", "undo_btn"]:
+            self.w[k].configure(bg=inp, fg=t2, activebackground=acc,
+                                activeforeground="#ffffff")
         self.w["pat_list"].configure(bg=inp, fg=t1, selectbackground=inp,
                                      selectforeground=t1)
 
@@ -944,6 +972,7 @@ class AutoClicker:
         self.w["pat_title"].config(text=self._t("pattern_title"))
         self.w["pat_hint"].config(text=self._t("pattern_hint"))
         self.w["clr_btn"].config(text=self._t("clear"))
+        self.w["undo_btn"].config(text=self._t("undo"))
         self.w["rep_title"].config(text=self._t("repeat_title"))
         self.w["rb_forever"].config(text=self._t("repeat_forever"))
         self.w["rb_duration"].config(text=self._t("repeat_duration"))
@@ -1235,15 +1264,16 @@ class AutoClicker:
         """Mouse hook thread: records clicks, or toggles on a side button."""
         if not pressed:
             return
+        name = get_mouse_name(button)
         if self.recording:
-            # clicks on our own window belong to the UI, not to the pattern
-            if not self._point_is_ours(x, y):
+            if name is not None and name == self.v_hotkey_str:
+                self._post(self._stop_recording)       # finish, hands free
+            elif self._should_record(x, y):
                 if not self.recorder.add(x, y, getattr(button, "name", "")):
                     self._post(self._stop_recording)   # pattern is full
                 else:
                     self._post(self._refresh_pattern_ui)
             return
-        name = get_mouse_name(button)
         if name is None:
             return                 # left/right are needed to operate the UI
         if self.binding_hotkey:
@@ -1309,6 +1339,11 @@ class AutoClicker:
         return len(name) == 1 or name.startswith("Num ") or name in self._EDIT_KEYS
 
     def _hotkey_toggle(self):
+        if self.recording:
+            # Ending the recording without touching the window is the whole
+            # point: reaching for it means clicking the taskbar first.
+            self._stop_recording()
+            return
         # A hotkey bound to an ordinary character must not start the clicker
         # while that character is being typed into an interval box. Stopping is
         # never blocked - that one always has to work.

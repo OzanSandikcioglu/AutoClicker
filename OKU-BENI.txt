@@ -97,10 +97,14 @@ tiklamak yerine senin tikladigin yerleri sirayla kaydeder.
 
   1. "Desen" sekmesine gec, "Kaydet"e bas.
   2. Tekrarlanmasini istedigin yerlere sirayla tikla.
-  3. "Bitir"e bas. Liste adimlarla dolar.
+  3. Bitirmek icin F6'ya bas. (Pencere arkaya dusmus olur;
+     kisayol onu aramaktan kurtarir. Pencerede "Bitir"e
+     basmak da olur.)
   4. "Durdurana kadar" ya da "Sure" sec, sonra F6'ya bas.
 
-Uygulama penceresine yaptigin tiklamalar kaydedilmez.
+Uygulama penceresine ve gorev cubuguna yaptigin tiklamalar
+kaydedilmez. Yanlislikla bir tiklama girerse "Geri al"
+son adimi siler.
 Beklemelerin de kaydedilir: oynatirken sen ne kadar
 bekledi isen o kadar bekler.
 

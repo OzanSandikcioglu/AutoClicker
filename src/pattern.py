@@ -58,6 +58,13 @@ class PatternRecorder:
         self.steps.append(PatternStep(int(x), int(y), name, round(delay, 3)))
         return True
 
+    def pop(self):
+        """Drop the last recorded click, for when one lands by accident."""
+        if not self.steps:
+            return False
+        self.steps = self.steps[:-1]
+        return True
+
     def clear(self):
         self.steps = []
         self._last_time = None
