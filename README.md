@@ -1,5 +1,7 @@
 # ⚡ AutoClicker
 
+**🇹🇷 Türkçe: [README.tr.md](README.tr.md)**
+
 A premium, lightweight, and universal Auto Clicker application built with Python and Tkinter. Featuring a modern responsive UI, custom hotkey binding, multiple languages, and DirectInput support for 3D/DirectX games.
 
 > **Windows only.** The click engine is built on the Windows `SendInput` API, so the app does not run on macOS or Linux.
@@ -59,6 +61,62 @@ GitHub offers two different downloads and they are not interchangeable:
 4. Run `AutoClicker.exe` and accept the Windows User Account Control (UAC) prompt - it is required to send clicks into games.
 5. Set your interval, click type, and mouse button.
 6. Move the cursor onto whatever you want clicked and press **F6** (or your own hotkey) to start. Press it again to stop.
+
+<details>
+<summary><b>Never done this before? Open this for the step-by-step version.</b></summary>
+
+### 1. Download the file
+
+Open the [Releases page](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Near the bottom there is a list headed **Assets**. Click **`AutoClicker-v1.3.0-win64.zip`** in that list. It lands in your **Downloads** folder.
+
+### 2. Unzip it - do not skip this
+
+What you downloaded is a **zip file**: a compressed box with a lot of files inside it. You have to take them out first.
+
+1. **Right-click** `AutoClicker-v1.3.0-win64.zip`.
+2. Choose **Extract All...**
+3. Press **Extract** in the window that opens.
+4. A new window appears with a folder called **AutoClicker** in it.
+
+> ⚠️ **This is where almost everyone goes wrong.** Double-clicking the zip and running `AutoClicker.exe` from inside it. Windows lets you, but **the app will not start**, because it cannot work without the `_internal` folder next to it. Extract first.
+
+**Tip:** drag the **AutoClicker** folder onto your desktop so you can find it easily next time.
+
+### 3. Open the app
+
+Go into the **AutoClicker** folder and double-click **AutoClicker.exe**.
+
+Up to two windows can appear. Both are normal:
+
+**🔵 A blue window saying "Windows protected your PC"**
+
+This means Windows has not seen the app before - not that it is harmful. Click the small **More info** text, then press the **Run anyway** button that appears.
+
+**🛡️ A window asking "Do you want to allow this app to make changes to your device?"**
+
+Say **Yes**. Without it the app still opens, but **its clicks will not work in some games**: Windows blocks unprivileged programs from sending clicks into them.
+
+### 4. Set it up
+
+- **Click Interval** - how long between clicks. Four boxes: Hours / Min / Sec / ms. Digits only. `100` in the ms box means ten clicks a second; for something slow, put `1` in the Sec box.
+- **Click Type** - `Single` a normal click, `Double` a double click, `Hold` holds the button down (for mining, continuous fire, and so on).
+- **Mouse Btn** - which button gets clicked: Left, Right or Middle.
+- **Hotkey** - the start/stop key, **F6** to begin with. To change it, click the button and then press the key you want; a mouse side button works too. **Esc** cancels.
+
+### 5. Run it
+
+1. Move the mouse pointer over the thing you want clicked.
+2. Press **F6** (or click the blue **START** bar).
+3. Clicking starts and the counter at the bottom right goes up.
+4. Press **F6** again to stop.
+
+Clicks go wherever the pointer is sitting, so put the pointer in place first, then start.
+
+### Removing it
+
+Drag the **AutoClicker** folder to the recycle bin. That is all - the app installs nothing, writes nothing to the registry, and leaves no files anywhere else.
+
+</details>
 
 ---
 
