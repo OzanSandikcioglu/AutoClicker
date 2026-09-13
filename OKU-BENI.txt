@@ -1,6 +1,7 @@
 ﻿==============================================================
                    AutoClicker - OKU BENI
 ==============================================================
+                              For English: README.txt
 
 Bu klasördeki AutoClicker.exe programı fareyi senin yerine
 tıklar. Bir tuşa basarsın, sen durdurana kadar tıklamaya
