@@ -93,12 +93,15 @@ files anywhere else.
 The "Pattern" tab at the top records where you click, instead
 of hitting one spot over and over.
 
-  1. Switch to "Pattern" and press "Record".
+  1. Press F5. (Or the "Record" button on the Pattern tab.)
   2. Click through what you want repeated, in order.
-  3. Press F6 to finish. (The window will have gone behind
-     what you clicked; the hotkey saves you hunting for it.
-     Pressing "Finish" on the window works too.)
+  3. Press F5 again to finish. The window will have gone
+     behind what you clicked; the key saves you hunting
+     for it.
   4. Choose "Until stopped" or "For", then press F6.
+
+F5 = start/stop recording, F6 = start/stop the macro. Both
+can be rebound in the window.
 
 Clicks on this app's own window and on the taskbar are not
 recorded. If a stray click gets in, "Undo" drops the last

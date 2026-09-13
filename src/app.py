@@ -77,7 +77,9 @@ class AutoClicker:
         
         # -- Hotkey binding state --
         self.v_hotkey_str = "F6"
-        self.binding_hotkey = False
+        self.v_rec_hotkey_str = "F5"
+        self.binding_target = None      # "main" or "record" while binding
+        self._rec_held = False
 
         # -- Widget refs --
         self.w = {}
@@ -141,6 +143,7 @@ class AutoClicker:
         self._build_settings()
         self._build_pattern()
         self._build_repeat()
+        self._build_hotkeys()
         self._build_button()
         self._build_status()
         self._build_admin()
@@ -408,19 +411,38 @@ class AutoClicker:
             rb.pack(side="left", padx=(4, 0))
             self.mb_rbs.append((rb, key))
 
-        # Hotkey
-        r3 = tk.Frame(card)
-        r3.pack(fill="x")
-        self.w["r3"] = r3
+    # --- Hotkey row -----------------------------------------------------------
 
-        self.w["hk_lbl"] = tk.Label(r3, text=self._t("hotkey"),
-                                     font=("Segoe UI", 9), width=10, anchor="w")
-        self.w["hk_lbl"].pack(side="left")
+    def _build_hotkeys(self):
+        """Both hotkeys live here rather than inside a mode card: they work in
+        either mode, so they have to be reachable from either one."""
+        p = self.w["main"]
+        row = tk.Frame(p)
+        row.pack(fill="x", pady=(0, 6))
+        self.w["hk_row"] = row
 
-        # Hotkey Bind Button
-        self.w["hk_btn"] = tk.Button(r3, text=self.v_hotkey_str, font=("Consolas", 9, "bold"),
-                                     relief="flat", width=14, cursor="hand2", command=self._start_binding)
-        self.w["hk_btn"].pack(side="left", padx=(4, 0))
+        left = tk.Frame(row)
+        left.pack(side="left")
+        self.w["hk_left"] = left
+        self.w["hk_lbl"] = tk.Label(left, text=self._t("hotkey"), font=("Segoe UI", 9))
+        self.w["hk_lbl"].pack(side="left", padx=(0, 6))
+        self.w["hk_btn"] = tk.Button(left, text=self.v_hotkey_str,
+                                     font=("Consolas", 9, "bold"), relief="flat",
+                                     width=11, cursor="hand2",
+                                     command=lambda: self._start_binding("main"))
+        self.w["hk_btn"].pack(side="left")
+
+        # packed only in pattern mode, where recording exists
+        right = tk.Frame(row)
+        self.w["hk_right"] = right
+        self.w["rec_hk_lbl"] = tk.Label(right, text=self._t("rec_hotkey"),
+                                        font=("Segoe UI", 9))
+        self.w["rec_hk_lbl"].pack(side="left", padx=(0, 6))
+        self.w["rec_hk_btn"] = tk.Button(right, text=self.v_rec_hotkey_str,
+                                         font=("Consolas", 9, "bold"), relief="flat",
+                                         width=11, cursor="hand2",
+                                         command=lambda: self._start_binding("record"))
+        self.w["rec_hk_btn"].pack(side="left")
 
     # --- Mode tabs ------------------------------------------------------------
 
@@ -457,7 +479,11 @@ class AutoClicker:
             for key in keys:
                 self.w[key].pack_forget()
         for key in self.MODE_CARDS[mode]:
-            self.w[key].pack(fill="x", pady=(0, 8), before=self.w["bf"])
+            self.w[key].pack(fill="x", pady=(0, 8), before=self.w["hk_row"])
+        if mode == "pattern":
+            self.w["hk_right"].pack(side="right")
+        else:
+            self.w["hk_right"].pack_forget()
         self._style_mode_tabs()
         self._draw_btn()
 
@@ -586,10 +612,6 @@ class AutoClicker:
         self._root_hwnd = top_level_of(self.root.winfo_id())
         self.recorder.start()
         self.recording = True
-        # The first click sends whatever is underneath to the front, and this
-        # window with it to the back. Staying on top means Finish is one click
-        # away instead of a trip through the taskbar.
-        self._set_topmost(True)
         self._sync_mouse_listener()
         self.w["st_lbl"].config(text=self._t("recording"), fg=self._c("accent_gold"))
         self._refresh_pattern_ui()
@@ -598,16 +620,9 @@ class AutoClicker:
         if not self.recording:
             return
         self.recording = False
-        self._set_topmost(False)
         self._sync_mouse_listener()
         self.w["st_lbl"].config(text=self._t("stopped"), fg=self._c("text_secondary"))
         self._refresh_pattern_ui()
-
-    def _set_topmost(self, on):
-        try:
-            self.root.attributes("-topmost", bool(on))
-        except tk.TclError:
-            pass
 
     def _undo_step(self):
         """Remove the last recorded click, for when one lands by accident."""
@@ -833,7 +848,7 @@ class AutoClicker:
 
         # Settings card
         self.w["set_outer"].configure(bg=brd)
-        for k in ["set_card", "set_tr", "r1", "r2", "r3"]:
+        for k in ["set_card", "set_tr", "r1", "r2"]:
             self.w[k].configure(bg=card)
         self.w["set_title"].configure(bg=card, fg=acc)
         dot2 = self.w["set_dot"]
@@ -843,14 +858,19 @@ class AutoClicker:
 
         self.w["ct_lbl"].configure(bg=card, fg=tl)
         self.w["mb_lbl"].configure(bg=card, fg=tl)
-        self.w["hk_lbl"].configure(bg=card, fg=tl)
 
         for rb, _ in self.ct_rbs + self.mb_rbs:
             rb.configure(bg=card, fg=t1, selectcolor=inp,
                          activebackground=card, activeforeground=acc)
 
-        self.w["hk_btn"].configure(bg=inp, fg=self._c("accent_gold"),
-                                   activebackground=acc, activeforeground="#ffffff")
+        # Hotkey row
+        for k in ["hk_row", "hk_left", "hk_right"]:
+            self.w[k].configure(bg=bg)
+        for k in ["hk_lbl", "rec_hk_lbl"]:
+            self.w[k].configure(bg=bg, fg=tl)
+        for k in ["hk_btn", "rec_hk_btn"]:
+            self.w[k].configure(bg=inp, fg=self._c("accent_gold"),
+                                activebackground=acc, activeforeground="#ffffff")
 
         # Button
         self.w["bf"].configure(bg=bg)
@@ -951,6 +971,7 @@ class AutoClicker:
         self.w["ct_lbl"].config(text=self._t("click_type"))
         self.w["mb_lbl"].config(text=self._t("mouse_btn"))
         self.w["hk_lbl"].config(text=self._t("hotkey"))
+        self.w["rec_hk_lbl"].config(text=self._t("rec_hotkey"))
 
         for rb, key in self.ct_rbs:
             rb.config(text=self._t(key))
@@ -1226,7 +1247,8 @@ class AutoClicker:
     # --- Hotkey ---------------------------------------------------------------
 
     def _hotkey_is_mouse(self):
-        return is_mouse_hotkey(self.v_hotkey_str)
+        return (is_mouse_hotkey(self.v_hotkey_str)
+                or is_mouse_hotkey(self.v_rec_hotkey_str))
 
     def _sync_mouse_listener(self):
         """Run the low level mouse hook only when a mouse hotkey needs it.
@@ -1235,7 +1257,8 @@ class AutoClicker:
         put this app in the path of every mouse event on the system for
         nothing.
         """
-        needed = self.binding_hotkey or self._hotkey_is_mouse() or self.recording
+        needed = (self.binding_target is not None or self._hotkey_is_mouse()
+                  or self.recording)
         if needed and self.mouse_kb is None:
             self.mouse_kb = MouseListener(
                 on_click=self._on_mouse,
@@ -1266,7 +1289,7 @@ class AutoClicker:
             return
         name = get_mouse_name(button)
         if self.recording:
-            if name is not None and name == self.v_hotkey_str:
+            if name is not None and name in (self.v_rec_hotkey_str, self.v_hotkey_str):
                 self._post(self._stop_recording)       # finish, hands free
             elif self._should_record(x, y):
                 if not self.recorder.add(x, y, getattr(button, "name", "")):
@@ -1276,79 +1299,124 @@ class AutoClicker:
             return
         if name is None:
             return                 # left/right are needed to operate the UI
-        if self.binding_hotkey:
-            self.binding_hotkey = False
+        if self.binding_target is not None:
             self._post(lambda n=name: self._finish_binding(n))
+        elif name == self.v_rec_hotkey_str:
+            self._post(self._record_hotkey_pressed)
         elif name == self.v_hotkey_str:
             self._post(self._hotkey_toggle)
 
-    def _start_binding(self):
-        if self.clicking:
+    def _binding_button(self, target):
+        return self.w["rec_hk_btn"] if target == "record" else self.w["hk_btn"]
+
+    def _start_binding(self, target="main"):
+        if self.clicking or self.recording:
             return
-        self.binding_hotkey = True
+        self.binding_target = target
         self._sync_mouse_listener()
-        self.w["hk_btn"].configure(text=self._t("press_key"), fg=self._c("red"))
+        self._binding_button(target).configure(text=self._t("press_key"),
+                                               fg=self._c("red"))
 
     def _finish_binding(self, name):
-        self.v_hotkey_str = name
-        self.binding_hotkey = False
+        target, self.binding_target = self.binding_target, None
+        if target is None:
+            return
         self._sync_mouse_listener()
         # The key just bound is still physically down; don't let its release or
         # auto-repeat count as a toggle.
         self._hotkey_held = True
+        self._rec_held = True
+
+        other = self.v_rec_hotkey_str if target == "main" else self.v_hotkey_str
+        if name == other:
+            # One key cannot mean two things; keep what was there and show it.
+            self._update_hotkey_ui()
+            self._binding_button(target).configure(fg=self._c("red"))
+            self.root.after(900, self._update_hotkey_ui)
+            return
+        if target == "record":
+            self.v_rec_hotkey_str = name
+        else:
+            self.v_hotkey_str = name
+        self._sync_mouse_listener()
         self._update_hotkey_ui()
 
     def _cancel_binding(self):
-        self.binding_hotkey = False
+        self.binding_target = None
         self._sync_mouse_listener()
         self._update_hotkey_ui()
 
     def _update_hotkey_ui(self):
         self.w["hk_btn"].configure(text=self.v_hotkey_str, fg=self._c("accent_gold"))
+        self.w["rec_hk_btn"].configure(text=self.v_rec_hotkey_str,
+                                       fg=self._c("accent_gold"))
         self._draw_btn()
 
     def _on_key(self, key):
         """Runs on the pynput listener thread - queue work, never touch Tk."""
-        if self.binding_hotkey:
+        if self.binding_target is not None:
             if key == Key.esc:
-                self.binding_hotkey = False
+                self.binding_target = None
                 self._post(self._cancel_binding)
                 return
             name = get_key_name(key)
             if name:
-                self.binding_hotkey = False
                 self._post(lambda n=name: self._finish_binding(n))
             return
 
-        if get_key_name(key) != self.v_hotkey_str:
+        name = get_key_name(key)
+        if name == self.v_rec_hotkey_str:
+            if self._rec_held:
+                return             # Windows key auto-repeat, not a new press
+            self._rec_held = True
+            self._post(self._record_hotkey_pressed)
+            return
+        if name != self.v_hotkey_str:
             return
         if self._hotkey_held:
-            return                 # Windows key auto-repeat, not a new press
+            return
         self._hotkey_held = True
         self._post(self._hotkey_toggle)
 
     def _on_key_release(self, key):
-        if get_key_name(key) == self.v_hotkey_str:
+        name = get_key_name(key)
+        if name == self.v_hotkey_str:
             self._hotkey_held = False
+        if name == self.v_rec_hotkey_str:
+            self._rec_held = False
 
     # Keys that put something into an entry box when pressed.
     _EDIT_KEYS = {"Space", "Backspace", "Delete"}
 
-    def _hotkey_types_text(self):
-        name = self.v_hotkey_str
+    def _types_text(self, name):
         return len(name) == 1 or name.startswith("Num ") or name in self._EDIT_KEYS
+
+    def _blocked_by_entry(self, name):
+        """A hotkey bound to an ordinary character must not fire while that
+        character is being typed into one of the boxes."""
+        return self._types_text(name) and self._entry_has_focus()
+
+    def _record_hotkey_pressed(self):
+        """The recording hotkey: start or end a recording, hands off the app."""
+        if self.clicking:
+            return                 # not in the middle of a run
+        if self.recording:
+            self._stop_recording()
+            return
+        if self._blocked_by_entry(self.v_rec_hotkey_str):
+            return
+        if self.mode != "pattern":
+            self._set_mode("pattern")
+        self._start_recording()
 
     def _hotkey_toggle(self):
         if self.recording:
-            # Ending the recording without touching the window is the whole
-            # point: reaching for it means clicking the taskbar first.
+            # Ending a recording takes priority: the macro cannot run yet
+            # anyway, and this is the key most people will reach for.
             self._stop_recording()
             return
-        # A hotkey bound to an ordinary character must not start the clicker
-        # while that character is being typed into an interval box. Stopping is
-        # never blocked - that one always has to work.
-        if (not self.clicking and self._hotkey_types_text()
-                and self._entry_has_focus()):
+        # Stopping is never blocked - that one always has to work.
+        if not self.clicking and self._blocked_by_entry(self.v_hotkey_str):
             return
         self._toggle()
 

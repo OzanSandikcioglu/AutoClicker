@@ -14,7 +14,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 ### 1. Dosyayı indir
 
-[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.4.1-win64.zip`** yazısına tıkla.
+[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.5.0-win64.zip`** yazısına tıkla.
 
 İndirme başlar. Dosya genelde **İndirilenler** klasörüne iner.
 
@@ -22,7 +22,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 İndirdiğin şey bir **zip dosyası**, yani içine bir sürü dosya konmuş sıkıştırılmış bir kutu. Önce kutuyu açman gerekiyor:
 
-1. `AutoClicker-v1.4.1-win64.zip` dosyasına **sağ tıkla**.
+1. `AutoClicker-v1.5.0-win64.zip` dosyasına **sağ tıkla**.
 2. **Tümünü ayıkla...** seçeneğine tıkla.
 3. Açılan pencerede **Ayıkla** düğmesine bas.
 4. Karşına yeni bir pencere açılır, içinde **AutoClicker** adlı bir klasör görürsün.
@@ -76,7 +76,8 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 | **Tık Aralığı** | Tıklamalar arasındaki süre. Dört kutunun toplamı alınır: `0 / 0 / 1 / 500` = 1,5 saniyede bir tıklama. Sadece rakam kabul eder; hepsini boş bırakırsan 100 ms kullanılır. |
 | **Tık Türü** | `Tek` her aralıkta bir tıklama, `Çift` çift tıklama, `Basılı` fare tuşunu sen durdurana kadar basılı tutar. |
 | **Fare Btn** | Hangi fare tuşu gönderilsin: Sol, Sağ veya Orta. |
-| **Kısayol** | Başlat/durdur tuşu, varsayılanı `F6`. Butona tıkla, sonra istediğin tuşa ya da farenin yan tuşuna bas; `Esc` iptal eder. Başka bir pencere (veya oyun) öndeyken de çalışır. |
+| **Başlat** | Açık olan modu başlatıp durduran tuş, varsayılanı `F6`. Butona tıkla, sonra istediğin tuşa ya da farenin yan tuşuna bas; `Esc` iptal eder. Başka bir pencere (veya oyun) öndeyken de çalışır. |
+| **Kayıt** | Desen kaydını başlatıp bitirir, varsayılanı `F5`, sadece Desen modunda görünür. Tıklayıcı sekmesindeyken basarsan Desen moduna geçip kaydı başlatır. Aynı tuş iki işe birden bağlanamaz. |
 | **BAŞLAT / DURDUR** | Kısayolla aynı iş. Çalışırken düğme turkuaza, durum ışığı yeşile döner. |
 | **Tıklama** | O anki çalıştırmada kaç tıklama gönderildiği. |
 | **Dil / Tema** | Dil düğmeleri ve karanlık/aydınlık anahtarı; ikisi de anında uygulanır. |
@@ -89,16 +90,15 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 
 **Desen** sekmesi, tek bir yere üst üste tıklamak yerine senin tıkladığın yerleri kaydeder.
 
-1. **Desen** sekmesine geç ve **Kaydet**'e bas.
+1. **Desen** sekmesine geç ve **Kaydet**'e bas - ya da doğrudan **Kayıt kısayoluna** (`F5`) bas; sekmeyi kendisi değiştirip kaydı başlatır.
 2. Tekrarlanmasını istediğin şeyleri sırayla tıkla. Her tıklama; yeri, hangi fare tuşu olduğu ve öncesinde ne kadar beklediğinle birlikte kaydedilir.
-3. Bitirmek için **kısayola bas** (varsayılan `F6`). İlk tıklamadan sonra pencere tıkladığın şeyin arkasına düşer; kısayol onu aramaktan kurtarır. İstersen pencerede **Bitir**'e de basabilirsin.
+3. Bitirmek için **Kayıt kısayoluna tekrar bas**. İlk tıklamadan sonra pencere tıkladığın şeyin arkasına düşer; kısayol onu aramaktan kurtarır. İstersen pencerede **Bitir**'e de basabilirsin.
 4. **Durdurana kadar** ya da **Süre** seç, turlar arasındaki **Ara** değerini ayarla, START'a (veya kısayoluna) bas.
 
 | Ayrıntı | Davranış |
 | :--- | :--- |
 | AutoClicker penceresine tıklamalar | Kaydedilmez, yani **Bitir**'e basman desenin parçası olmaz. |
 | Görev çubuğuna tıklamalar | Onlar da kaydedilmez. Pencereye görev çubuğundan dönmek, desene istemediğin bir tıklama sokmanın en kolay yoluydu. |
-| Kayıt sırasında pencere | Üstte kalır, yani ilk tıklaman onu tıkladığın şeyin arkasına gömmez. |
 | Yanlışlıkla giden tıklama | **Geri al** son adımı siler; **Temizle** desenin tamamını atar. |
 | Kayıt sırasında yan tuşlar | Yok sayılır - tıklama motoru sadece sol, sağ ve ortayı gönderebiliyor. |
 | Kendi zamanlaman | Korunur. Oynatırken tıklamalar arasında senin beklediğin kadar bekler; tek bir bekleme en fazla 10 saniye sayılır. |
@@ -130,7 +130,7 @@ GitHub'da iki ayrı indirme var ve bunlar birbirinin yerine geçmez:
 
 | Amacın | Ne yapmalısın | Eline ne geçer |
 | :--- | :--- | :--- |
-| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.4.1-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
+| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.5.0-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
 | **Kodu okumak / değiştirmek** | Yeşil **Code** düğmesi → *Download ZIP* | Sadece kaynak kod, ~70 KB. İçinde **uygulama yok**, kendin derlemen gerekir. |
 
 > Sayfanın üstündeki yeşil **Code** düğmesi herkesin ilk bastığı düğmedir ve sadece uygulamayı kullanmak istiyorsan **yanlış olanıdır**: sana Python dosyaları verir, uygulamayı değil.

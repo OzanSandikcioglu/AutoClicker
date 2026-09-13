@@ -31,7 +31,8 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 | **Click Interval** | Time between clicks, summed across the four boxes. `0 / 0 / 1 / 500` means one click every 1.5 seconds. Digits only; leaving every box empty falls back to 100ms. |
 | **Click Type** | `Single` one click per interval, `Double` two rapid clicks per interval, `Hold` presses the button and keeps it down until you stop. |
 | **Mouse Btn** | Which button is sent: left, right, or middle. |
-| **Hotkey** | Global start/stop key, `F6` by default. Click the button, then press the key or mouse side button you want; `Esc` cancels the binding. It works even while another window (or a game) has focus. |
+| **Start** | Global start/stop key for whichever mode is showing, `F6` by default. Click the button, then press the key or mouse side button you want; `Esc` cancels the binding. It works even while another window (or a game) has focus. |
+| **Rec** | Starts and ends a pattern recording, `F5` by default, and only shown in Pattern mode. Pressing it from the Clicker tab switches to Pattern and starts recording. One key cannot be bound to both jobs. |
 | **START / STOP** | Same toggle as the hotkey. The bar turns teal and the status dot turns green while clicking. |
 | **Clicks** | How many clicks have been sent since the current run started. |
 | **Clicker / Pattern** | The two tabs under the toolbar. **Clicker** repeats one click where the pointer already is; **Pattern** replays a recorded sequence. Neither can be switched while something is running. |
@@ -46,16 +47,15 @@ Clicks land wherever the mouse cursor happens to be - park the cursor on the tar
 
 The **Pattern** tab records where you click instead of hammering one spot.
 
-1. Switch to **Pattern** and press **Record**.
+1. Switch to **Pattern** and press **Record** - or just press the **Rec key** (`F5`), which switches tabs and starts recording for you.
 2. Click your way through whatever you want repeated, in order. Each click is stored with its position, its button, and the pause you left before it.
-3. **Press your hotkey** (`F6` by default) to finish. The window will have gone behind whatever you clicked, and the hotkey saves you from hunting for it - pressing **Finish** on the window works too.
+3. **Press the Rec key again** to finish. The window will have gone behind whatever you clicked, and the key saves you from hunting for it - pressing **Finish** on the window works too.
 4. Pick **Until stopped** or a **For** duration, set the **Gap** between passes, and press START or your hotkey.
 
 | Detail | Behaviour |
 | :--- | :--- |
 | Clicks on the AutoClicker window | Not recorded, so pressing **Finish** never becomes part of the pattern. |
 | Clicks on the taskbar | Not recorded either. Going back to the window through the taskbar was the easiest way to get a click into the pattern that you never meant to record. |
-| The window while recording | Stays on top, so the first click does not bury it behind whatever you clicked. |
 | A stray click | **Undo** removes the last step; **Clear** throws the whole pattern away. |
 | Side buttons while recording | Ignored - the click engine can only send left, right and middle. |
 | Your own timing | Kept. Replay waits exactly as long as you did between clicks, with a 10 second cap on any single pause. |
@@ -71,7 +71,7 @@ GitHub offers two different downloads and they are not interchangeable:
 
 | You want to... | Do this | What you actually get |
 | :--- | :--- | :--- |
-| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.4.1-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
+| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.5.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
 | **Read or modify the code** | The green **Code** button → *Download ZIP*, or `git clone` | The source only, about 70 KB. It contains **no executable** - you would have to build one. |
 
 > The green **Code** button at the top of the page is the one most people press first, and it is the wrong one if you only want to run the clicker: it hands you Python files, not an app.
@@ -81,7 +81,7 @@ GitHub offers two different downloads and they are not interchangeable:
 ## 🚀 How to Use (Pre-compiled EXE)
 
 1. Open the [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) page.
-2. Download `AutoClicker-v1.4.1-win64.zip` from the **Assets** list.
+2. Download `AutoClicker-v1.5.0-win64.zip` from the **Assets** list.
 3. **Extract the whole folder.** `AutoClicker.exe` needs the `_internal` folder that sits next to it; copying the `.exe` out on its own will not start.
 4. Run `AutoClicker.exe` and accept the Windows User Account Control (UAC) prompt - it is required to send clicks into games.
 5. Set your interval, click type, and mouse button.
@@ -92,13 +92,13 @@ GitHub offers two different downloads and they are not interchangeable:
 
 ### 1. Download the file
 
-Open the [Releases page](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Near the bottom there is a list headed **Assets**. Click **`AutoClicker-v1.4.1-win64.zip`** in that list. It lands in your **Downloads** folder.
+Open the [Releases page](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Near the bottom there is a list headed **Assets**. Click **`AutoClicker-v1.5.0-win64.zip`** in that list. It lands in your **Downloads** folder.
 
 ### 2. Unzip it - do not skip this
 
 What you downloaded is a **zip file**: a compressed box with a lot of files inside it. You have to take them out first.
 
-1. **Right-click** `AutoClicker-v1.4.1-win64.zip`.
+1. **Right-click** `AutoClicker-v1.5.0-win64.zip`.
 2. Choose **Extract All...**
 3. Press **Extract** in the window that opens.
 4. A new window appears with a folder called **AutoClicker** in it.
