@@ -18,9 +18,9 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 - **Hold Down Mode (Basılı Tut):** Continuously sends mouse down signals (reinforced every 25ms) so game engines register the hold. The button is always released when you stop or close the app, so it can never be left stuck down.
 - **Precise Click Interval:** Set the interval in hours, minutes, seconds, and milliseconds (down to 1ms). The schedule is deadline based so it does not drift, and edits apply while it is still running.
 - **Safe to Leave Running:** Clicks the app injects are ignored by its own window, so a cursor resting over the START button cannot switch the clicker off. Windows is also asked to stay awake for as long as clicking is active.
-- **Administrator Aware:** Windows silently discards injected clicks aimed at a window that runs at a higher integrity level - `SendInput` still reports success, so a clicker with no warning just looks broken. The app checks its own token at startup and says whether it is elevated, with a one-click elevated restart when it is not. The release EXE carries a `requestedExecutionLevel="requireAdministrator"` manifest, so it asks for the UAC prompt by itself.
+- **Runs as Administrator:** Windows silently discards injected clicks aimed at a window running at a higher integrity level - `SendInput` reports success anyway - which is why some games ignore a clicker for no visible reason. The release EXE carries a `requestedExecutionLevel="requireAdministrator"` manifest, so it raises the UAC prompt at launch and its clicks land.
 - **Multiple Languages:** Instant UI translation for **English**, **Türkçe**, **Deutsch**, **Español**, **Français**, and **中文**.
-- **Dark/Light Mode:** Seamlessly switch between dark and light themes with a single toggle.
+- **Dark/Light Mode:** A sun/moon switch in the header flips the whole window instantly.
 
 ---
 
@@ -37,7 +37,6 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 | **Clicks** | How many clicks have been sent since the current run started. |
 | **Clicker / Pattern** | The two tabs under the toolbar. **Clicker** repeats one click where the pointer already is; **Pattern** replays a recorded sequence. Neither can be switched while something is running. |
 | **Lang / Theme** | Language buttons and the dark/light switch; both apply instantly. |
-| **Administrator** | Bottom strip. Green means the app is elevated and its clicks reach anything on screen. Amber means it is not, and the **Run as admin** button restarts it elevated. |
 
 Clicks land wherever the mouse cursor happens to be - park the cursor on the target first, then start with the hotkey.
 
@@ -72,7 +71,7 @@ GitHub offers two different downloads and they are not interchangeable:
 
 | You want to... | Do this | What you actually get |
 | :--- | :--- | :--- |
-| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.6.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
+| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.7.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
 | **Read or modify the code** | The green **Code** button → *Download ZIP*, or `git clone` | The source only, about 70 KB. It contains **no executable** - you would have to build one. |
 
 > The green **Code** button at the top of the page is the one most people press first, and it is the wrong one if you only want to run the clicker: it hands you Python files, not an app.
@@ -82,7 +81,7 @@ GitHub offers two different downloads and they are not interchangeable:
 ## 🚀 How to Use (Pre-compiled EXE)
 
 1. Open the [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) page.
-2. Download `AutoClicker-v1.6.0-win64.zip` from the **Assets** list.
+2. Download `AutoClicker-v1.7.0-win64.zip` from the **Assets** list.
 3. **Extract the whole folder.** `AutoClicker.exe` needs the `_internal` folder that sits next to it; copying the `.exe` out on its own will not start.
 4. Run `AutoClicker.exe` and accept the Windows User Account Control (UAC) prompt - it is required to send clicks into games.
 5. Set your interval, click type, and mouse button.
@@ -93,13 +92,13 @@ GitHub offers two different downloads and they are not interchangeable:
 
 ### 1. Download the file
 
-Open the [Releases page](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Near the bottom there is a list headed **Assets**. Click **`AutoClicker-v1.6.0-win64.zip`** in that list. It lands in your **Downloads** folder.
+Open the [Releases page](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Near the bottom there is a list headed **Assets**. Click **`AutoClicker-v1.7.0-win64.zip`** in that list. It lands in your **Downloads** folder.
 
 ### 2. Unzip it - do not skip this
 
 What you downloaded is a **zip file**: a compressed box with a lot of files inside it. You have to take them out first.
 
-1. **Right-click** `AutoClicker-v1.6.0-win64.zip`.
+1. **Right-click** `AutoClicker-v1.7.0-win64.zip`.
 2. Choose **Extract All...**
 3. Press **Extract** in the window that opens.
 4. A new window appears with a folder called **AutoClicker** in it.
@@ -157,10 +156,10 @@ The app did not delete itself: Windows Defender quarantined it. An unsigned exec
 Passing the file around through chat apps makes this much more likely, because the copy arrives stamped as internet-sourced with no download reputation behind it. Send people the [Releases](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) link instead of the file itself. Note that auto-clicker blocking is a policy call, not always a mistaken one: Windows 11 enables potentially-unwanted-app blocking by default, so a machine can remove it while yours keeps it happily.
 
 **The status bar says "Blocked by Windows".**
-`SendInput` itself was rejected, which happens while the UAC dialog or the lock screen owns the secure desktop. Dismiss it and start again. Note that this message cannot appear for the integrity-level case described below: Windows discards that input without reporting any failure, which is what the administrator strip is there to catch.
+`SendInput` itself was rejected, which happens while the UAC dialog or the lock screen owns the secure desktop. Dismiss it and start again. Note that this message cannot appear for the integrity-level case described below: Windows discards that input without reporting any failure at all.
 
 **Clicks work on the desktop but not inside my game.**
-First check the strip at the bottom of the window. If it is amber, the app is not running as administrator, and Windows is dropping the clicks before the game ever sees them - press **Run as admin** and accept the UAC prompt. This is the usual cause. If the strip is already green, the game may only read raw input, and competitive titles with kernel-level anti-cheat deliberately reject injected input; no user-mode clicker reaches those.
+The usual cause is that AutoClicker is not running as administrator, so Windows drops the clicks before the game ever sees them - close it, right click `AutoClicker.exe` and choose *Run as administrator*. The release build asks for that by itself, so this mostly bites when the UAC prompt was declined or when running from source. If it is already elevated, the game may only read raw input, and competitive titles with kernel-level anti-cheat deliberately reject injected input; no user-mode clicker reaches those.
 
 **My mouse's macro button will not bind as a hotkey.**
 Bindable buttons are the wheel click and the two thumb buttons - shown as `Mouse 3`, `Mouse 4` and `Mouse 5` - because those are the ones Windows reports as ordinary mouse buttons. Left and right are refused on purpose: binding one of them would mean every click in the interface toggles the clicker, including the clicks you would need to bind something else.
@@ -194,7 +193,7 @@ That installs `pynput`, which is the only thing needed to run the app. PyInstall
 ```bash
 python auto_clicker.py
 ```
-Running from source does not elevate on its own - the app will show the amber administrator strip. Either press **Run as admin**, or start the terminal as administrator, whenever you need clicks to land inside a game.
+Running from source does not elevate on its own. Start the terminal as administrator whenever you need clicks to land inside a game; only the built EXE asks for elevation by itself.
 
 ### 3. Compile to EXE (PyInstaller)
 Run the pre-configured build script:
@@ -214,7 +213,7 @@ src/app.py             UI, theming, click worker, hotkey handling
 src/mouse.py           SendInput click engine, injected-event tagging, timers
 src/hotkey.py          pynput key -> stable key name resolution
 src/pattern.py         Recorded click sequences and their timing
-src/elevation.py       Token elevation check and the user-initiated UAC restart
+src/widgets.py         The segmented control every choice on the window uses
 src/overlay.py         The click-through red frame shown while recording
 src/themes.py          Dark and light colour palettes
 src/translations.py    UI strings for the six supported languages

@@ -14,7 +14,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 ### 1. Dosyayı indir
 
-[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.6.0-win64.zip`** yazısına tıkla.
+[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.7.0-win64.zip`** yazısına tıkla.
 
 İndirme başlar. Dosya genelde **İndirilenler** klasörüne iner.
 
@@ -22,7 +22,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 İndirdiğin şey bir **zip dosyası**, yani içine bir sürü dosya konmuş sıkıştırılmış bir kutu. Önce kutuyu açman gerekiyor:
 
-1. `AutoClicker-v1.6.0-win64.zip` dosyasına **sağ tıkla**.
+1. `AutoClicker-v1.7.0-win64.zip` dosyasına **sağ tıkla**.
 2. **Tümünü ayıkla...** seçeneğine tıkla.
 3. Açılan pencerede **Ayıkla** düğmesine bas.
 4. Karşına yeni bir pencere açılır, içinde **AutoClicker** adlı bir klasör görürsün.
@@ -82,7 +82,6 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 | **Tıklama** | O anki çalıştırmada kaç tıklama gönderildiği. |
 | **Dil / Tema** | Dil düğmeleri ve karanlık/aydınlık anahtarı; ikisi de anında uygulanır. |
 | **Tıklayıcı / Desen** | Araç çubuğunun altındaki iki sekme. **Tıklayıcı** imlecin durduğu yere aynı tıklamayı tekrarlar; **Desen** kaydettiğin sırayı oynatır. Bir şey çalışırken sekme değişmez. |
-| **Yönetici şeridi** | En alttaki şerit. Yeşilse tıklamalar ekrandaki her şeye ulaşır. Turuncuysa ulaşamaz — **Yönetici olarak çalıştır** düğmesine bas. |
 
 ---
 
@@ -119,9 +118,9 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 - **Basılı tutma modu:** Fare tuşunu basılı tutar ve oyun motorunun algılaması için sinyali 25 ms'de bir tazeler. Durdurduğunda veya uygulamayı kapattığında tuş **her zaman** bırakılır, asla basılı kalmaz.
 - **Hassas aralık:** Saat, dakika, saniye ve milisaniye. Zamanlama kaymaz ve çalışırken aralığı değiştirebilirsin.
 - **Yalnız bırakmaya uygun:** Uygulamanın gönderdiği tıklamalar kendi penceresinde yok sayılır, yani fare BAŞLAT düğmesinin üstünde kalsa bile tıklayıcı kendini kapatmaz. Tıklama sürdüğü sürece bilgisayarın uykuya geçmesi de engellenir.
-- **Yönetici durumunu gösterir:** Windows, yetkisi daha yüksek bir pencereye giden tıklamaları sessizce çöpe atar — hata bile vermez. Uygulama kendi yetkisini kontrol edip durumu söyler ve tek tıkla yönetici olarak yeniden başlayabilir.
+- **Yönetici olarak çalışır:** Windows, yetkisi daha yüksek bir pencereye giden tıklamaları sessizce çöpe atar — hata bile vermez, bu yüzden bazı oyunlar tıklayıcıyı görünür bir sebep olmadan yok sayar. Yayınlanan EXE, açılışta UAC istemi çıkaran bir manifest taşıyor, böylece tıklamaları yerine ulaşıyor.
 - **Altı dil:** İngilizce, **Türkçe**, Almanca, İspanyolca, Fransızca ve Çince.
-- **Karanlık/Aydınlık tema:** Tek düğmeyle anında değişir.
+- **Karanlık/Aydınlık tema:** Başlıktaki güneş/ay anahtarı tüm pencereyi anında çevirir.
 
 ---
 
@@ -131,7 +130,7 @@ GitHub'da iki ayrı indirme var ve bunlar birbirinin yerine geçmez:
 
 | Amacın | Ne yapmalısın | Eline ne geçer |
 | :--- | :--- | :--- |
-| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.6.0-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
+| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.7.0-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
 | **Kodu okumak / değiştirmek** | Yeşil **Code** düğmesi → *Download ZIP* | Sadece kaynak kod, ~70 KB. İçinde **uygulama yok**, kendin derlemen gerekir. |
 
 > Sayfanın üstündeki yeşil **Code** düğmesi herkesin ilk bastığı düğmedir ve sadece uygulamayı kullanmak istiyorsan **yanlış olanıdır**: sana Python dosyaları verir, uygulamayı değil.
@@ -149,7 +148,7 @@ Uygulama kendini silmedi: **Windows Defender karantinaya aldı.** İmzasız ve i
 Dosyayı WhatsApp gibi uygulamalarla elden ele göndermek bu ihtimali çok artırır, çünkü karşı tarafa "internetten geldi" damgasıyla ve hiçbir itibar geçmişi olmadan ulaşır. Dosya yerine [Releases](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) bağlantısını gönder.
 
 **Masaüstünde tıklıyor ama oyunumda tıklamıyor.**
-Önce pencerenin altındaki şeride bak. **Turuncuysa** uygulama yönetici olarak çalışmıyordur ve Windows tıklamaları oyuna ulaşmadan siliyordur — **Yönetici olarak çalıştır** düğmesine basıp **Evet** de. En sık sebep budur. Şerit zaten yeşilse oyun sadece ham girdi okuyor olabilir; çekirdek seviyesinde hile korumalı oyunlara hiçbir tıklayıcı ulaşamaz.
+En sık sebep, AutoClicker'ın yönetici olarak çalışmamasıdır; Windows tıklamaları oyuna ulaşmadan siliyordur. Kapat, `AutoClicker.exe` dosyasına sağ tıkla ve *Yönetici olarak çalıştır* de. Yayınlanan sürüm bunu kendisi istediği için genelde UAC istemi reddedildiğinde ya da kaynaktan çalıştırıldığında olur. Yönetici olarak çalışıyorsa oyun sadece ham girdi okuyor olabilir; çekirdek seviyesinde hile korumalı oyunlara hiçbir tıklayıcı ulaşamaz.
 
 **Faremin makro tuşunu kısayol yapamıyorum.**
 Bağlanabilen tuşlar tekerlek tıklaması ve iki baş parmak tuşudur (`Mouse 3`, `Mouse 4`, `Mouse 5`); Windows'un normal fare tuşu olarak bildirdiği tuşlar bunlardır. Sol ve sağ tuş bilerek kabul edilmiyor: onlardan birini bağlarsan arayüzdeki her tıklama tıklayıcıyı açıp kapatır.
@@ -183,7 +182,7 @@ Bu, uygulamayı çalıştırmak için gereken tek şey olan `pynput`'u kurar. Py
 ```bash
 python auto_clicker.py
 ```
-Kaynaktan çalıştırmak yönetici yetkisi vermez, uygulama turuncu şeridi gösterir. Tıklamaların oyuna ulaşması gerektiğinde **Yönetici olarak çalıştır**'a bas veya terminali yönetici olarak aç.
+Kaynaktan çalıştırmak yönetici yetkisi vermez. Tıklamaların oyuna ulaşması gerektiğinde terminali yönetici olarak aç; yalnızca derlenen EXE yetkiyi kendisi istiyor.
 
 ### 3. EXE derle
 ```bash
@@ -202,7 +201,7 @@ src/app.py             Arayüz, tema, tıklama döngüsü, kısayol yönetimi
 src/mouse.py           SendInput tıklama motoru, olay imzalama, zamanlayıcılar
 src/hotkey.py          pynput tuşlarını sabit isimlere çevirir
 src/pattern.py         Kaydedilen tık dizileri ve zamanlamaları
-src/elevation.py       Yönetici yetkisi kontrolü ve UAC ile yeniden başlatma
+src/widgets.py         Arayüzdeki her seçimin kullandığı segment kontrolü
 src/overlay.py         Kayıt sırasındaki tıklama geçirgen kırmızı çerçeve
 src/themes.py          Karanlık ve aydınlık renk paletleri
 src/translations.py    Altı dilin arayüz metinleri

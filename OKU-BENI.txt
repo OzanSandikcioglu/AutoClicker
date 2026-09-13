@@ -63,15 +63,16 @@ Tıklamalar farenin durduğu yere gider. Önce fareyi doğru
 yere koy, sonra başlat.
 
 
-4) EN ALTTAKİ ŞERİT NE DİYOR
+4) OYUNDA TIKLAMIYORSA
 --------------------------------------------------------------
-YEŞİL "Yönetici"
-    Her şey yolunda, tıklamalar ekrandaki her şeye ulaşır.
+En sik sebep programin yonetici olarak calismamasidir;
+Windows tiklamalari oyuna ulasmadan siliyordur. Kapat,
+AutoClicker.exe dosyasina sag tikla ve "Yonetici olarak
+calistir" de.
 
-TURUNCU "Yönetici değil"
-    Tıklamalar bazı oyunlara ulaşmaz. Sağdaki
-    "Yönetici olarak çalıştır" düğmesine bas ve "Evet" de.
-
+Oyun tam ekran (exclusive fullscreen) ise kenarliksiz
+pencere modunu dene. Cekirdek seviyesinde hile korumasi
+olan oyunlara ise hicbir tiklayici ulasamaz.
 
 5) DOSYA KENDİLİĞİNDEN KAYBOLDUYSA
 --------------------------------------------------------------

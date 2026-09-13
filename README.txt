@@ -61,15 +61,16 @@ Clicks go wherever the pointer is sitting, so put the pointer
 in place first, then start.
 
 
-4) WHAT THE STRIP AT THE BOTTOM MEANS
+4) IF IT DOES NOT CLICK IN YOUR GAME
 --------------------------------------------------------------
-GREEN "Administrator"
-    All good - the clicks reach anything on screen.
+The usual cause is that the program is not running as
+administrator, so Windows drops the clicks before the game
+sees them. Close it, right click AutoClicker.exe and choose
+"Run as administrator".
 
-AMBER "Not administrator"
-    Clicks will not reach some games. Press the
-    "Run as admin" button on the right and answer "Yes".
-
+If the game runs in exclusive fullscreen, try borderless
+window mode instead. Games with kernel level anti-cheat
+reject injected clicks outright - no clicker reaches those.
 
 5) IF THE FILE DISAPPEARS ON ITS OWN
 --------------------------------------------------------------
