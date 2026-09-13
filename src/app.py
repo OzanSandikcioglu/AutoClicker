@@ -9,14 +9,15 @@ import time
 import os
 import tkinter as tk
 from pynput.keyboard import Key, Listener as KeyboardListener
+from pynput.mouse import Listener as MouseListener
 
 from src.translations import TRANSLATIONS, CLICK_KEYS, MBTN_KEYS, LANG_ORDER
 from src.themes import THEMES
-from src.mouse import (HOLD_SECONDS, begin_high_resolution_timer,
+from src.mouse import (HOLD_SECONDS, INJECT_TAG, begin_high_resolution_timer,
                        end_high_resolution_timer, is_injected_event, keep_awake,
                        win32_click_mouse, win32_press_mouse,
                        win32_release_mouse)
-from src.hotkey import get_key_name
+from src.hotkey import get_key_name, get_mouse_name, is_mouse_hotkey
 from src.elevation import is_elevated, relaunch_as_admin
 
 
@@ -51,6 +52,7 @@ class AutoClicker:
         self._input_blocked = False
         self._hotkey_held = False
         self._pump_id = None
+        self.mouse_kb = None        # low level mouse hook, only while needed
         self._cfg = {"interval": self.DEFAULT_INTERVAL,
                      "btn": "left", "type": "single"}
 
@@ -86,6 +88,8 @@ class AutoClicker:
                                    on_release=self._on_key_release)
         self.kb.daemon = True
         self.kb.start()
+
+        self._sync_mouse_listener()
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self._pump()
@@ -402,7 +406,7 @@ class AutoClicker:
 
         # Hotkey Bind Button
         self.w["hk_btn"] = tk.Button(r3, text=self.v_hotkey_str, font=("Consolas", 9, "bold"),
-                                     relief="flat", width=12, cursor="hand2", command=self._start_binding)
+                                     relief="flat", width=14, cursor="hand2", command=self._start_binding)
         self.w["hk_btn"].pack(side="left", padx=(4, 0))
 
     # --- Toggle Button --------------------------------------------------------
@@ -861,15 +865,65 @@ class AutoClicker:
 
     # --- Hotkey ---------------------------------------------------------------
 
+    def _hotkey_is_mouse(self):
+        return is_mouse_hotkey(self.v_hotkey_str)
+
+    def _sync_mouse_listener(self):
+        """Run the low level mouse hook only when a mouse hotkey needs it.
+
+        Most people bind a keyboard key, and a permanent WH_MOUSE_LL hook would
+        put this app in the path of every mouse event on the system for
+        nothing.
+        """
+        needed = self.binding_hotkey or self._hotkey_is_mouse()
+        if needed and self.mouse_kb is None:
+            self.mouse_kb = MouseListener(
+                on_click=self._on_mouse,
+                win32_event_filter=self._mouse_event_filter)
+            self.mouse_kb.daemon = True
+            self.mouse_kb.start()
+        elif not needed and self.mouse_kb is not None:
+            listener, self.mouse_kb = self.mouse_kb, None
+            try:
+                listener.stop()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _mouse_event_filter(msg, data):
+        """Drop the clicks this app injected, and only those.
+
+        Filtering everything Windows marks as injected would be easier, but
+        gaming mice forward their macro buttons through driver software that
+        injects them too - those have to keep working as hotkeys.
+        """
+        if (data.dwExtraInfo or 0) == INJECT_TAG:
+            return False
+
+    def _on_mouse(self, x, y, button, pressed, injected=False):
+        """Mouse hook thread: side buttons can toggle the clicker."""
+        if not pressed:
+            return
+        name = get_mouse_name(button)
+        if name is None:
+            return                 # left/right are needed to operate the UI
+        if self.binding_hotkey:
+            self.binding_hotkey = False
+            self._post(lambda n=name: self._finish_binding(n))
+        elif name == self.v_hotkey_str:
+            self._post(self._hotkey_toggle)
+
     def _start_binding(self):
         if self.clicking:
             return
         self.binding_hotkey = True
+        self._sync_mouse_listener()
         self.w["hk_btn"].configure(text=self._t("press_key"), fg=self._c("red"))
 
     def _finish_binding(self, name):
         self.v_hotkey_str = name
         self.binding_hotkey = False
+        self._sync_mouse_listener()
         # The key just bound is still physically down; don't let its release or
         # auto-repeat count as a toggle.
         self._hotkey_held = True
@@ -877,6 +931,7 @@ class AutoClicker:
 
     def _cancel_binding(self):
         self.binding_hotkey = False
+        self._sync_mouse_listener()
         self._update_hotkey_ui()
 
     def _update_hotkey_ui(self):
@@ -940,10 +995,13 @@ class AutoClicker:
             except tk.TclError:
                 pass
             self._pump_id = None
-        try:
-            self.kb.stop()
-        except Exception:
-            pass
+        for listener in (self.kb, self.mouse_kb):
+            if listener is not None:
+                try:
+                    listener.stop()
+                except Exception:
+                    pass
+        self.mouse_kb = None
         try:
             self.root.destroy()
         except Exception:

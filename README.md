@@ -9,7 +9,8 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 ## ✨ Features
 
 - **Universal DirectX/DirectInput Support:** Utilizes low-level Windows `SendInput` API with a custom frame-hold delay to work inside games (tested on *Trove* and other MMOs).
-- **Custom Hotkey Binding:** Click the hotkey button and press any key to set your start/stop toggle (`Esc` cancels). Holding the key down toggles once instead of repeatedly, and a hotkey bound to an ordinary character will not fire while you are typing into the interval boxes.
+- **Custom Hotkey Binding:** Click the hotkey button and press any key - or a mouse side button - to set your start/stop toggle (`Esc` cancels). Holding the key down toggles once instead of repeatedly, and a hotkey bound to an ordinary character will not fire while you are typing into the interval boxes.
+- **Mouse Buttons as Hotkeys:** The thumb buttons most gaming mice carry (`Mouse 4` / `Mouse 5`, and the wheel click as `Mouse 3`) can be bound just like a key, so the clicker can be toggled without leaving the mouse. Clicks the app injects itself are filtered out, while a macro button forwarded by mouse driver software still registers.
 - **Three Click Types:** Single, double, or hold down - with the left, right, or middle mouse button.
 - **Hold Down Mode (Basılı Tut):** Continuously sends mouse down signals (reinforced every 25ms) so game engines register the hold. The button is always released when you stop or close the app, so it can never be left stuck down.
 - **Precise Click Interval:** Set the interval in hours, minutes, seconds, and milliseconds (down to 1ms). The schedule is deadline based so it does not drift, and edits apply while it is still running.
@@ -27,7 +28,7 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 | **Click Interval** | Time between clicks, summed across the four boxes. `0 / 0 / 1 / 500` means one click every 1.5 seconds. Digits only; leaving every box empty falls back to 100ms. |
 | **Click Type** | `Single` one click per interval, `Double` two rapid clicks per interval, `Hold` presses the button and keeps it down until you stop. |
 | **Mouse Btn** | Which button is sent: left, right, or middle. |
-| **Hotkey** | Global start/stop key, `F6` by default. Click the button, then press the key you want; `Esc` cancels the binding. It works even while another window (or a game) has focus. |
+| **Hotkey** | Global start/stop key, `F6` by default. Click the button, then press the key or mouse side button you want; `Esc` cancels the binding. It works even while another window (or a game) has focus. |
 | **START / STOP** | Same toggle as the hotkey. The bar turns teal and the status dot turns green while clicking. |
 | **Clicks** | How many clicks have been sent since the current run started. |
 | **Lang / Theme** | Language buttons and the dark/light switch; both apply instantly. |
@@ -43,7 +44,7 @@ GitHub offers two different downloads and they are not interchangeable:
 
 | You want to... | Do this | What you actually get |
 | :--- | :--- | :--- |
-| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.2.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
+| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.3.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
 | **Read or modify the code** | The green **Code** button → *Download ZIP*, or `git clone` | The source only, about 70 KB. It contains **no executable** - you would have to build one. |
 
 > The green **Code** button at the top of the page is the one most people press first, and it is the wrong one if you only want to run the clicker: it hands you Python files, not an app.
@@ -53,7 +54,7 @@ GitHub offers two different downloads and they are not interchangeable:
 ## 🚀 How to Use (Pre-compiled EXE)
 
 1. Open the [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) page.
-2. Download `AutoClicker-v1.2.0-win64.zip` from the **Assets** list.
+2. Download `AutoClicker-v1.3.0-win64.zip` from the **Assets** list.
 3. **Extract the whole folder.** `AutoClicker.exe` needs the `_internal` folder that sits next to it; copying the `.exe` out on its own will not start.
 4. Run `AutoClicker.exe` and accept the Windows User Account Control (UAC) prompt - it is required to send clicks into games.
 5. Set your interval, click type, and mouse button.
@@ -76,6 +77,13 @@ Passing the file around through chat apps makes this much more likely, because t
 
 **Clicks work on the desktop but not inside my game.**
 First check the strip at the bottom of the window. If it is amber, the app is not running as administrator, and Windows is dropping the clicks before the game ever sees them - press **Run as admin** and accept the UAC prompt. This is the usual cause. If the strip is already green, the game may only read raw input, and competitive titles with kernel-level anti-cheat deliberately reject injected input; no user-mode clicker reaches those.
+
+**My mouse's macro button will not bind as a hotkey.**
+Bindable buttons are the wheel click and the two thumb buttons - shown as `Mouse 3`, `Mouse 4` and `Mouse 5` - because those are the ones Windows reports as ordinary mouse buttons. Left and right are refused on purpose: binding one of them would mean every click in the interface toggles the clicker, including the clicks you would need to bind something else.
+
+Buttons beyond those are usually handled entirely inside the mouse's own driver and never reach Windows as mouse input at all. The way around that is the mouse's configuration software (Logitech G HUB, Razer Synapse, and so on): map the button to a keyboard key - an unused function key such as `F9` works well - and then bind that key here. A button the driver forwards this way is injected input, and the app deliberately accepts it; only clicks it injected itself are ignored.
+
+Note that a bound mouse button keeps doing its normal job as well. Binding `Mouse 5` does not stop it from being "forward" in your browser.
 
 **The hotkey does nothing while I am editing an interval box.**
 That is intentional for hotkeys bound to an ordinary character or digit, so typing `5` into a box cannot start the clicker. Function keys such as `F6` are unaffected, and stopping is never blocked.

@@ -16,6 +16,23 @@ def _name_from_vk(vk):
     return f"Key {vk}"
 
 
+# Mouse buttons that may be bound as a hotkey. Left and right are deliberately
+# missing: binding one of them would make every click toggle the clicker,
+# including the clicks needed to reach the UI and bind something else.
+MOUSE_HOTKEY_NAMES = {"middle": "Mouse 3", "x1": "Mouse 4", "x2": "Mouse 5"}
+_MOUSE_HOTKEYS = frozenset(MOUSE_HOTKEY_NAMES.values())
+
+
+def get_mouse_name(button):
+    """Name for a bindable mouse button, or None if it must not be bound."""
+    return MOUSE_HOTKEY_NAMES.get(getattr(button, "name", None))
+
+
+def is_mouse_hotkey(name):
+    """True when a stored hotkey name refers to a mouse button."""
+    return name in _MOUSE_HOTKEYS
+
+
 def get_key_name(key):
     """Convert a pynput key object to a human-readable string.
 
