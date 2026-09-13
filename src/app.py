@@ -20,6 +20,7 @@ from src.mouse import (HOLD_SECONDS, INJECT_TAG, begin_high_resolution_timer,
 from src.hotkey import get_key_name, get_mouse_name, is_mouse_hotkey
 from src.elevation import is_elevated, relaunch_as_admin
 from src.pattern import PatternRecorder
+from src.overlay import RecordingBorder
 
 
 class AutoClicker:
@@ -58,6 +59,7 @@ class AutoClicker:
         self.mode = "clicker"
         self.recorder = PatternRecorder()
         self.recording = False
+        self.rec_border = RecordingBorder(self.root)
         self._root_hwnd = None
         self._cfg = {"interval": self.DEFAULT_INTERVAL,
                      "btn": "left", "type": "single"}
@@ -625,6 +627,9 @@ class AutoClicker:
         self._root_hwnd = top_level_of(self.root.winfo_id())
         self.recorder.start()
         self.recording = True
+        # The window is about to end up behind whatever gets clicked, so the
+        # screen has to be the thing that says recording is on.
+        self.rec_border.show()
         self._sync_mouse_listener()
         self.w["st_lbl"].config(text=self._t("recording"), fg=self._c("accent_gold"))
         self._refresh_pattern_ui()
@@ -633,6 +638,7 @@ class AutoClicker:
         if not self.recording:
             return
         self.recording = False
+        self.rec_border.hide()
         self._sync_mouse_listener()
         self.w["st_lbl"].config(text=self._t("stopped"), fg=self._c("text_secondary"))
         self._refresh_pattern_ui()
@@ -1442,6 +1448,7 @@ class AutoClicker:
 
     def _on_close(self):
         self.clicking = False
+        self.rec_border.hide()
         self._join_worker()
         if self._pump_id is not None:
             # Cancel the queued pump, otherwise Tcl runs it after destroy() has

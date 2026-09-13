@@ -13,7 +13,7 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 - **Universal DirectX/DirectInput Support:** Utilizes low-level Windows `SendInput` API with a custom frame-hold delay to work inside games (tested on *Trove* and other MMOs).
 - **Custom Hotkey Binding:** Click the hotkey button and press any key - or a mouse side button - to set your start/stop toggle (`Esc` cancels). Holding the key down toggles once instead of repeatedly, and a hotkey bound to an ordinary character will not fire while you are typing into the interval boxes.
 - **Mouse Buttons as Hotkeys:** The thumb buttons most gaming mice carry (`Mouse 4` / `Mouse 5`, and the wheel click as `Mouse 3`) can be bound just like a key, so the clicker can be toggled without leaving the mouse. Clicks the app injects itself are filtered out, while a macro button forwarded by mouse driver software still registers.
-- **Pattern Mode:** Record a sequence of clicks - where each one lands, which button it used, and how long you paused before it - then replay that sequence until you stop it, or for a set length of time.
+- **Pattern Mode:** Record a sequence of clicks - where each one lands, which button it used, and how long you paused before it - then replay that sequence until you stop it, or for a set length of time. A red frame around the screen shows while recording is on, since the window itself is usually behind whatever you are clicking.
 - **Three Click Types:** Single, double, or hold down - with the left, right, or middle mouse button.
 - **Hold Down Mode (Basılı Tut):** Continuously sends mouse down signals (reinforced every 25ms) so game engines register the hold. The button is always released when you stop or close the app, so it can never be left stuck down.
 - **Precise Click Interval:** Set the interval in hours, minutes, seconds, and milliseconds (down to 1ms). The schedule is deadline based so it does not drift, and edits apply while it is still running.
@@ -56,6 +56,7 @@ The **Pattern** tab records where you click instead of hammering one spot.
 | :--- | :--- |
 | Clicks on the AutoClicker window | Not recorded, so pressing **Finish** never becomes part of the pattern. |
 | Clicks on the taskbar | Not recorded either. Going back to the window through the taskbar was the easiest way to get a click into the pattern that you never meant to record. |
+| Knowing it is recording | A red frame runs around the screen for as long as a recording is on. It is click-through, so it never swallows a click at the edge, and it never takes focus from what you are working in. |
 | A stray click | **Undo** removes the last step; **Clear** throws the whole pattern away. |
 | Side buttons while recording | Ignored - the click engine can only send left, right and middle. |
 | Your own timing | Kept. Replay waits exactly as long as you did between clicks, with a 10 second cap on any single pause. |
@@ -71,7 +72,7 @@ GitHub offers two different downloads and they are not interchangeable:
 
 | You want to... | Do this | What you actually get |
 | :--- | :--- | :--- |
-| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.5.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
+| **Just use the clicker** | Open [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) and download `AutoClicker-v1.6.0-win64.zip` | The ready-to-run app, about 12 MB. No Python, no building. |
 | **Read or modify the code** | The green **Code** button → *Download ZIP*, or `git clone` | The source only, about 70 KB. It contains **no executable** - you would have to build one. |
 
 > The green **Code** button at the top of the page is the one most people press first, and it is the wrong one if you only want to run the clicker: it hands you Python files, not an app.
@@ -81,7 +82,7 @@ GitHub offers two different downloads and they are not interchangeable:
 ## 🚀 How to Use (Pre-compiled EXE)
 
 1. Open the [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) page.
-2. Download `AutoClicker-v1.5.0-win64.zip` from the **Assets** list.
+2. Download `AutoClicker-v1.6.0-win64.zip` from the **Assets** list.
 3. **Extract the whole folder.** `AutoClicker.exe` needs the `_internal` folder that sits next to it; copying the `.exe` out on its own will not start.
 4. Run `AutoClicker.exe` and accept the Windows User Account Control (UAC) prompt - it is required to send clicks into games.
 5. Set your interval, click type, and mouse button.
@@ -92,13 +93,13 @@ GitHub offers two different downloads and they are not interchangeable:
 
 ### 1. Download the file
 
-Open the [Releases page](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Near the bottom there is a list headed **Assets**. Click **`AutoClicker-v1.5.0-win64.zip`** in that list. It lands in your **Downloads** folder.
+Open the [Releases page](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Near the bottom there is a list headed **Assets**. Click **`AutoClicker-v1.6.0-win64.zip`** in that list. It lands in your **Downloads** folder.
 
 ### 2. Unzip it - do not skip this
 
 What you downloaded is a **zip file**: a compressed box with a lot of files inside it. You have to take them out first.
 
-1. **Right-click** `AutoClicker-v1.5.0-win64.zip`.
+1. **Right-click** `AutoClicker-v1.6.0-win64.zip`.
 2. Choose **Extract All...**
 3. Press **Extract** in the window that opens.
 4. A new window appears with a folder called **AutoClicker** in it.
@@ -214,6 +215,7 @@ src/mouse.py           SendInput click engine, injected-event tagging, timers
 src/hotkey.py          pynput key -> stable key name resolution
 src/pattern.py         Recorded click sequences and their timing
 src/elevation.py       Token elevation check and the user-initiated UAC restart
+src/overlay.py         The click-through red frame shown while recording
 src/themes.py          Dark and light colour palettes
 src/translations.py    UI strings for the six supported languages
 build.bat              One-shot PyInstaller build

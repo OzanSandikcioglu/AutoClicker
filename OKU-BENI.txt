@@ -101,6 +101,10 @@ tiklamak yerine senin tikladigin yerleri sirayla kaydeder.
      olur; kisayol onu aramaktan kurtarir.
   4. "Durdurana kadar" ya da "Sure" sec, sonra F6'ya bas.
 
+Kayit acikken ekranin kenarlarinda kirmizi bir cerceve
+durur - boylece kaydin acik oldugunu her zaman gorursun.
+Cerceve tiklamalari engellemez.
+
 F5 = kaydi ac/kapat, F6 = makroyu ac/kapat. Ikisini de
 pencereden degistirebilirsin.
 

@@ -100,6 +100,9 @@ of hitting one spot over and over.
      for it.
   4. Choose "Until stopped" or "For", then press F6.
 
+While recording is on, a red frame runs around the screen,
+so you can always tell. It does not block your clicks.
+
 F5 = start/stop recording, F6 = start/stop the macro. Both
 can be rebound in the window.
 

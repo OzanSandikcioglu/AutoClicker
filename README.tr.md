@@ -14,7 +14,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 ### 1. Dosyayı indir
 
-[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.5.0-win64.zip`** yazısına tıkla.
+[**Bu sayfayı aç**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest). Sayfanın altında **Assets** (Dosyalar) yazan bir liste var. Oradaki **`AutoClicker-v1.6.0-win64.zip`** yazısına tıkla.
 
 İndirme başlar. Dosya genelde **İndirilenler** klasörüne iner.
 
@@ -22,7 +22,7 @@ Bilgisayar konusunda deneyimin yoksa endişelenme, buradan takip et. Her adımda
 
 İndirdiğin şey bir **zip dosyası**, yani içine bir sürü dosya konmuş sıkıştırılmış bir kutu. Önce kutuyu açman gerekiyor:
 
-1. `AutoClicker-v1.5.0-win64.zip` dosyasına **sağ tıkla**.
+1. `AutoClicker-v1.6.0-win64.zip` dosyasına **sağ tıkla**.
 2. **Tümünü ayıkla...** seçeneğine tıkla.
 3. Açılan pencerede **Ayıkla** düğmesine bas.
 4. Karşına yeni bir pencere açılır, içinde **AutoClicker** adlı bir klasör görürsün.
@@ -99,6 +99,7 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 | :--- | :--- |
 | AutoClicker penceresine tıklamalar | Kaydedilmez, yani **Bitir**'e basman desenin parçası olmaz. |
 | Görev çubuğuna tıklamalar | Onlar da kaydedilmez. Pencereye görev çubuğundan dönmek, desene istemediğin bir tıklama sokmanın en kolay yoluydu. |
+| Kaydın açık olduğunu anlamak | Kayıt sürdüğü sürece ekranın kenarlarında kırmızı bir çerçeve durur. Tıklama geçirgendir; kenardaki bir tıklamayı yutmaz ve çalıştığın pencerenin odağını almaz. |
 | Yanlışlıkla giden tıklama | **Geri al** son adımı siler; **Temizle** desenin tamamını atar. |
 | Kayıt sırasında yan tuşlar | Yok sayılır - tıklama motoru sadece sol, sağ ve ortayı gönderebiliyor. |
 | Kendi zamanlaman | Korunur. Oynatırken tıklamalar arasında senin beklediğin kadar bekler; tek bir bekleme en fazla 10 saniye sayılır. |
@@ -113,7 +114,7 @@ Tıklamalar farenin durduğu yere gider, o yüzden önce fareyi doğru yere koy,
 - **Oyunlarda çalışır:** Windows'un düşük seviyeli `SendInput` sistemini, oyun motorlarının kareyi yakalayabilmesi için özel bir basılı tutma gecikmesiyle kullanır (*Trove* ve başka MMO'larda denendi).
 - **İstediğin tuşu kısayol yapabilirsin:** Klavyeden herhangi bir tuş ya da farenin yan tuşu. Tuşu basılı tutmak bir kez tetikler, üst üste açıp kapatmaz.
 - **Farenin yan tuşları kısayol olabilir:** Oyuncu farelerindeki baş parmak tuşları (`Mouse 4` / `Mouse 5`) ve tekerlek tıklaması (`Mouse 3`). Uygulamanın kendi gönderdiği tıklamalar sayılmaz, ama fare yazılımının ilettiği makro tuşları çalışır.
-- **Desen modu:** Tıklamalarını sırasıyla kaydeder - nereye, hangi tuşla ve kaç saniye bekleyerek - sonra aynı sırayı sen durdurana kadar ya da belirlediğin süre boyunca tekrarlar.
+- **Desen modu:** Tıklamalarını sırasıyla kaydeder - nereye, hangi tuşla ve kaç saniye bekleyerek - sonra aynı sırayı sen durdurana kadar ya da belirlediğin süre boyunca tekrarlar. Kayıt açıkken ekranın kenarları kırmızı olur; pencere zaten tıkladığın şeyin arkasında kalıyor.
 - **Üç tıklama türü:** Tek, çift veya basılı tutma — sol, sağ ya da orta tuşla.
 - **Basılı tutma modu:** Fare tuşunu basılı tutar ve oyun motorunun algılaması için sinyali 25 ms'de bir tazeler. Durdurduğunda veya uygulamayı kapattığında tuş **her zaman** bırakılır, asla basılı kalmaz.
 - **Hassas aralık:** Saat, dakika, saniye ve milisaniye. Zamanlama kaymaz ve çalışırken aralığı değiştirebilirsin.
@@ -130,7 +131,7 @@ GitHub'da iki ayrı indirme var ve bunlar birbirinin yerine geçmez:
 
 | Amacın | Ne yapmalısın | Eline ne geçer |
 | :--- | :--- | :--- |
-| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.5.0-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
+| **Sadece kullanmak** | [**Releases**](https://github.com/OzanSandikcioglu/AutoClicker/releases/latest) sayfasından `AutoClicker-v1.6.0-win64.zip` | Çalışmaya hazır uygulama, ~12 MB. Python gerekmez. |
 | **Kodu okumak / değiştirmek** | Yeşil **Code** düğmesi → *Download ZIP* | Sadece kaynak kod, ~70 KB. İçinde **uygulama yok**, kendin derlemen gerekir. |
 
 > Sayfanın üstündeki yeşil **Code** düğmesi herkesin ilk bastığı düğmedir ve sadece uygulamayı kullanmak istiyorsan **yanlış olanıdır**: sana Python dosyaları verir, uygulamayı değil.
@@ -202,6 +203,7 @@ src/mouse.py           SendInput tıklama motoru, olay imzalama, zamanlayıcıla
 src/hotkey.py          pynput tuşlarını sabit isimlere çevirir
 src/pattern.py         Kaydedilen tık dizileri ve zamanlamaları
 src/elevation.py       Yönetici yetkisi kontrolü ve UAC ile yeniden başlatma
+src/overlay.py         Kayıt sırasındaki tıklama geçirgen kırmızı çerçeve
 src/themes.py          Karanlık ve aydınlık renk paletleri
 src/translations.py    Altı dilin arayüz metinleri
 build.bat              Tek adımda PyInstaller derlemesi
