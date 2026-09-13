@@ -15,6 +15,9 @@ TRANSLATIONS = {
         "stopped": "Stopped", "running": "Running...", "holding": "Holding...",
         "clicks": "Clicks:", "lang": "Lang", "theme": "Theme",
         "press_key": "Press key...", "blocked": "Blocked by Windows",
+        "admin_ok": "Administrator", "admin_warn": "Not administrator",
+        "admin_hint": "Windows silently drops clicks sent to some games unless AutoClicker runs as administrator.",
+        "run_as_admin": "Run as admin", "admin_denied": "Elevation declined",
     },
     "TR": {
         "name": "Türkçe", "subtitle": "Otomatik Tıklama Aracı",
@@ -27,6 +30,9 @@ TRANSLATIONS = {
         "stopped": "Durduruldu", "running": "Çalışıyor...", "holding": "Basılı Tutuluyor...",
         "clicks": "Tıklama:", "lang": "Dil", "theme": "Tema",
         "press_key": "Tuşa bas...", "blocked": "Windows engelliyor",
+        "admin_ok": "Yönetici", "admin_warn": "Yönetici değil",
+        "admin_hint": "Yönetici olarak çalışmazsa Windows bazı oyunlara giden tıklamaları sessizce yok sayar.",
+        "run_as_admin": "Yönetici olarak çalıştır", "admin_denied": "Yönetici izni verilmedi",
     },
     "DE": {
         "name": "Deutsch", "subtitle": "Automatisches Klick-Werkzeug",
@@ -39,6 +45,9 @@ TRANSLATIONS = {
         "stopped": "Gestoppt", "running": "Lauft...", "holding": "Gehalten...",
         "clicks": "Klicks:", "lang": "Sprache", "theme": "Thema",
         "press_key": "Taste...", "blocked": "Von Windows blockiert",
+        "admin_ok": "Administrator", "admin_warn": "Kein Administrator",
+        "admin_hint": "Ohne Administratorrechte verwirft Windows die Klicks fur manche Spiele lautlos.",
+        "run_as_admin": "Als Admin starten", "admin_denied": "Rechte abgelehnt",
     },
     "ES": {
         "name": "Espanol", "subtitle": "Herramienta de Clic Automatico",
@@ -51,6 +60,9 @@ TRANSLATIONS = {
         "stopped": "Detenido", "running": "Ejecutando...", "holding": "Manteniendo...",
         "clicks": "Clics:", "lang": "Idioma", "theme": "Tema",
         "press_key": "Pulsa tecla...", "blocked": "Bloqueado por Windows",
+        "admin_ok": "Administrador", "admin_warn": "Sin administrador",
+        "admin_hint": "Sin permisos de administrador Windows descarta en silencio los clics de algunos juegos.",
+        "run_as_admin": "Ejecutar como admin", "admin_denied": "Permiso denegado",
     },
     "FR": {
         "name": "Francais", "subtitle": "Outil de Clic Automatique",
@@ -63,6 +75,9 @@ TRANSLATIONS = {
         "stopped": "Arrete", "running": "En cours...", "holding": "Maintenu...",
         "clicks": "Clics:", "lang": "Langue", "theme": "Theme",
         "press_key": "Touche...", "blocked": "Bloque par Windows",
+        "admin_ok": "Administrateur", "admin_warn": "Pas administrateur",
+        "admin_hint": "Sans droits administrateur Windows ignore silencieusement les clics de certains jeux.",
+        "run_as_admin": "Lancer en admin", "admin_denied": "Elevation refusee",
     },
     "ZH": {
         "name": "Zhongwen", "subtitle": "Zi Dong Dian Ji Gong Ju",
@@ -75,6 +90,9 @@ TRANSLATIONS = {
         "stopped": "Yi Ting Zhi", "running": "Yun Xing Zhong...", "holding": "An Zhu Zhong...",
         "clicks": "Dian Ji:", "lang": "Yu Yan", "theme": "Zhu Ti",
         "press_key": "An Jian...", "blocked": "Windows Zu Zhi Le",
+        "admin_ok": "Guan Li Yuan", "admin_warn": "Fei Guan Li Yuan",
+        "admin_hint": "Bu Yi Guan Li Yuan Yun Xing Shi, Windows Hui Jing Mo Diu Qi Bu Fen You Xi De Dian Ji.",
+        "run_as_admin": "Yi Guan Li Yuan Yun Xing", "admin_denied": "Quan Xian Bei Ju Jue",
     },
 }
 

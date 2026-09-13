@@ -17,6 +17,7 @@ from src.mouse import (HOLD_SECONDS, begin_high_resolution_timer,
                        win32_click_mouse, win32_press_mouse,
                        win32_release_mouse)
 from src.hotkey import get_key_name
+from src.elevation import is_elevated, relaunch_as_admin
 
 
 class AutoClicker:
@@ -37,6 +38,9 @@ class AutoClicker:
         self.click_count = 0
         self.click_thread = None
         self.holding = False
+        # Windows drops injected clicks aimed at higher integrity windows, and
+        # says nothing about it - so tell the user where they stand up front.
+        self.elevated = is_elevated()
 
         # -- Threading --
         # The click worker and the keyboard listener never touch Tk directly:
@@ -121,6 +125,7 @@ class AutoClicker:
         self._build_settings()
         self._build_button()
         self._build_status()
+        self._build_admin()
         self._install_click_guard()
 
     # --- Self-click guard -----------------------------------------------------
@@ -480,6 +485,50 @@ class AutoClicker:
         self.w["cnt_val"] = tk.Label(right, text="0", font=("Consolas", 13, "bold"))
         self.w["cnt_val"].pack(side="left", padx=(4, 0))
 
+    # --- Administrator notice -------------------------------------------------
+
+    def _build_admin(self):
+        p = self.w["main"]
+        outer = tk.Frame(p, padx=1, pady=1)
+        outer.pack(fill="x", pady=(8, 0))
+        self.w["adm_outer"] = outer
+
+        inner = tk.Frame(outer, padx=14, pady=8)
+        inner.pack(fill="both")
+        self.w["adm_inner"] = inner
+
+        row = tk.Frame(inner)
+        row.pack(fill="x")
+        self.w["adm_row"] = row
+
+        self.w["adm_dot"] = tk.Canvas(row, width=10, height=10, highlightthickness=0)
+        self.w["adm_dot"].pack(side="left", padx=(0, 8), pady=3)
+
+        self.w["adm_lbl"] = tk.Label(
+            row, font=("Segoe UI", 9, "bold"),
+            text=self._t("admin_ok" if self.elevated else "admin_warn"))
+        self.w["adm_lbl"].pack(side="left")
+
+        if self.elevated:
+            return
+
+        self.w["adm_btn"] = tk.Button(row, text=self._t("run_as_admin"),
+                                      font=("Segoe UI", 8, "bold"), relief="flat",
+                                      cursor="hand2", command=self._relaunch_admin)
+        self.w["adm_btn"].pack(side="right")
+
+        self.w["adm_hint"] = tk.Label(inner, text=self._t("admin_hint"),
+                                      font=("Segoe UI", 8), anchor="w",
+                                      justify="left", wraplength=360)
+        self.w["adm_hint"].pack(fill="x", pady=(5, 0))
+
+    def _relaunch_admin(self):
+        """Hand over to an elevated copy, if the user accepts the UAC prompt."""
+        if relaunch_as_admin():
+            self._on_close()
+        else:
+            self.w["adm_lbl"].config(text=self._t("admin_denied"), fg=self._c("red"))
+
     def _draw_st_dot(self):
         d = self.w["st_dot"]
         d.delete("all")
@@ -577,6 +626,21 @@ class AutoClicker:
         self.w["cnt_lbl"].configure(bg=card, fg=t2)
         self.w["cnt_val"].configure(bg=card, fg=self._c("accent_gold"))
 
+        # Administrator notice
+        tone = self._c("green") if self.elevated else self._c("accent_gold")
+        self.w["adm_outer"].configure(bg=brd)
+        for k in ["adm_inner", "adm_row"]:
+            self.w[k].configure(bg=card)
+        adot = self.w["adm_dot"]
+        adot.configure(bg=card)
+        adot.delete("all")
+        adot.create_oval(1, 1, 9, 9, fill=tone, outline="")
+        self.w["adm_lbl"].configure(bg=card, fg=tone)
+        if not self.elevated:
+            self.w["adm_hint"].configure(bg=card, fg=t2)
+            self.w["adm_btn"].configure(bg=inp, fg=self._c("accent"),
+                                        activebackground=acc, activeforeground="#ffffff")
+
     # =========================================================================
     #  LANGUAGE & THEME SWITCHING
     # =========================================================================
@@ -620,6 +684,12 @@ class AutoClicker:
             self.w["st_lbl"].config(text=self._t("stopped"))
 
         self.w["cnt_lbl"].config(text=self._t("clicks"))
+
+        self.w["adm_lbl"].config(
+            text=self._t("admin_ok" if self.elevated else "admin_warn"))
+        if not self.elevated:
+            self.w["adm_hint"].config(text=self._t("admin_hint"))
+            self.w["adm_btn"].config(text=self._t("run_as_admin"))
 
     # =========================================================================
     #  CLICK LOGIC

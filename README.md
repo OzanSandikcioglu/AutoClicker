@@ -13,8 +13,8 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 - **Three Click Types:** Single, double, or hold down - with the left, right, or middle mouse button.
 - **Hold Down Mode (Basılı Tut):** Continuously sends mouse down signals (reinforced every 25ms) so game engines register the hold. The button is always released when you stop or close the app, so it can never be left stuck down.
 - **Precise Click Interval:** Set the interval in hours, minutes, seconds, and milliseconds (down to 1ms). The schedule is deadline based so it does not drift, and edits apply while it is still running.
-- **Safe to Leave Running:** Clicks the app injects are ignored by its own window, so a cursor resting over the START button cannot switch the clicker off. Windows is asked to stay awake while clicking is active, and the status bar tells you if Windows refuses the injected input.
-- **Runs as Administrator:** The executable carries a `requestedExecutionLevel="requireAdministrator"` manifest, so Windows raises the UAC prompt at launch and clicks are not blocked by security boundaries.
+- **Safe to Leave Running:** Clicks the app injects are ignored by its own window, so a cursor resting over the START button cannot switch the clicker off. Windows is also asked to stay awake for as long as clicking is active.
+- **Administrator Aware:** Windows silently discards injected clicks aimed at a window that runs at a higher integrity level - `SendInput` still reports success, so a clicker with no warning just looks broken. The app checks its own token at startup and says whether it is elevated, with a one-click elevated restart when it is not. The release EXE carries a `requestedExecutionLevel="requireAdministrator"` manifest, so it asks for the UAC prompt by itself.
 - **Multiple Languages:** Instant UI translation for **English**, **Türkçe**, **Deutsch**, **Español**, **Français**, and **中文**.
 - **Dark/Light Mode:** Seamlessly switch between dark and light themes with a single toggle.
 
@@ -31,6 +31,7 @@ A premium, lightweight, and universal Auto Clicker application built with Python
 | **START / STOP** | Same toggle as the hotkey. The bar turns teal and the status dot turns green while clicking. |
 | **Clicks** | How many clicks have been sent since the current run started. |
 | **Lang / Theme** | Language buttons and the dark/light switch; both apply instantly. |
+| **Administrator** | Bottom strip. Green means the app is elevated and its clicks reach anything on screen. Amber means it is not, and the **Run as admin** button restarts it elevated. |
 
 Clicks land wherever the mouse cursor happens to be - park the cursor on the target first, then start with the hotkey.
 
@@ -52,11 +53,11 @@ Clicks land wherever the mouse cursor happens to be - park the cursor on the tar
 **Windows Defender or my antivirus flags the download.**
 Auto clickers inject synthetic input, which is exactly what input-stealing malware does, so heuristic scanners flag them as a matter of course. The build is deliberately shipped as an unpacked `--onedir` folder with embedded version information to reduce this, but a fresh executable with no download reputation can still be flagged. Build it yourself from source (below) if you would rather not trust the release binary.
 
-**The status bar says "Blocked by Windows" and nothing gets clicked.**
-Windows refuses injected input aimed at a window running at a higher integrity level than the sender. Run `AutoClicker.exe` as administrator (right click → *Run as administrator*), which the release build requests automatically. A locked screen or the UAC dialog itself will also swallow clicks.
+**The status bar says "Blocked by Windows".**
+`SendInput` itself was rejected, which happens while the UAC dialog or the lock screen owns the secure desktop. Dismiss it and start again. Note that this message cannot appear for the integrity-level case described below: Windows discards that input without reporting any failure, which is what the administrator strip is there to catch.
 
 **Clicks work on the desktop but not inside my game.**
-Some games only read raw input, and competitive titles with anti-cheat deliberately reject injected input. Try `Hold` mode or a slower interval first; if the game uses kernel-level anti-cheat, no user-mode clicker will reach it.
+First check the strip at the bottom of the window. If it is amber, the app is not running as administrator, and Windows is dropping the clicks before the game ever sees them - press **Run as admin** and accept the UAC prompt. This is the usual cause. If the strip is already green, the game may only read raw input, and competitive titles with kernel-level anti-cheat deliberately reject injected input; no user-mode clicker reaches those.
 
 **The hotkey does nothing while I am editing an interval box.**
 That is intentional for hotkeys bound to an ordinary character or digit, so typing `5` into a box cannot start the clicker. Function keys such as `F6` are unaffected, and stopping is never blocked.
@@ -82,7 +83,7 @@ pip install -r requirements.txt
 ```bash
 python auto_clicker.py
 ```
-Run from a terminal without administrator rights during development; you only need the elevated build to click into games.
+Running from source does not elevate on its own - the app will show the amber administrator strip. Either press **Run as admin**, or start the terminal as administrator, whenever you need clicks to land inside a game.
 
 ### 3. Compile to EXE (PyInstaller)
 Run the pre-configured build script:
@@ -101,6 +102,7 @@ auto_clicker.py        Entry point; creates the Tk root and the app
 src/app.py             UI, theming, click worker, hotkey handling
 src/mouse.py           SendInput click engine, injected-event tagging, timers
 src/hotkey.py          pynput key -> stable key name resolution
+src/elevation.py       Token elevation check and the user-initiated UAC restart
 src/themes.py          Dark and light colour palettes
 src/translations.py    UI strings for the six supported languages
 build.bat              One-shot PyInstaller build
