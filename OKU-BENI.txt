@@ -1,0 +1,97 @@
+﻿==============================================================
+                   AutoClicker - OKU BENI
+==============================================================
+
+Bu klasördeki AutoClicker.exe programı fareyi senin yerine
+tıklar. Bir tuşa basarsın, sen durdurana kadar tıklamaya
+devam eder.
+
+
+1) UYGULAMAYI AÇMA
+--------------------------------------------------------------
+AutoClicker.exe dosyasına çift tıkla.
+
+ÖNEMLİ: AutoClicker.exe dosyasını tek başına başka bir yere
+taşıma. Yanındaki "_internal" klasörü olmadan açılmaz.
+Taşıman gerekirse klasörün tamamını taşı.
+
+
+2) AÇILIRKEN ÇIKAN PENCERELER
+--------------------------------------------------------------
+İlk açılışta iki pencere çıkabilir. İkisi de normaldir.
+
+* "Windows bilgisayarınızı korudu" yazan mavi pencere:
+  Windows bu programı daha önce hiç görmediği için çıkar,
+  zararlı olduğu anlamına gelmez.
+  "Ek bilgi" yazısına tıkla, sonra "Yine de çalıştır"a bas.
+
+* Programın cihazında değişiklik yapmasına izin vermeni
+  isteyen pencere:
+  "Evet" de. İzin vermezsen program yine açılır ama bazı
+  oyunlarda tıklamaları çalışmaz. Bunun sebebi Windows'un,
+  izinsiz programların oyunlara tıklama göndermesini
+  engellemesidir.
+
+
+3) KULLANIMI
+--------------------------------------------------------------
+Tık Aralığı : Kaç saniyede bir tıklayacağı. Dört kutu var:
+              Saat / Dakika / Saniye / ms (milisaniye).
+              100 ms = saniyede 10 tıklama.
+              Yavaş olsun istersen Saniye kutusuna 1 yaz.
+              Kutulara sadece rakam yazılır.
+
+Tık Türü    : Tek    -> normal tıklama
+              Çift   -> çift tıklama
+              Basılı -> fare tuşunu basılı tutar
+                        (madencilik, sürekli ateş gibi işler)
+
+Fare Btn    : Hangi tuş tıklansın - Sol / Sağ / Orta
+
+Kısayol     : Başlat-durdur tuşu. Başlangıçta F6'dır.
+              Değiştirmek için butona tıkla, sonra istediğin
+              tuşa bas. Farenin yan tuşlarını da kullanabilirsin.
+              Vazgeçersen Esc'e bas.
+
+BAŞLATMAK İÇİN:
+  1. Fareyi, tıklanmasını istediğin yerin üstüne getir.
+  2. F6'ya bas. (Ya da mavi BAŞLAT düğmesine tıkla.)
+  3. Durdurmak için tekrar F6'ya bas.
+
+Tıklamalar farenin durduğu yere gider. Önce fareyi doğru
+yere koy, sonra başlat.
+
+
+4) EN ALTTAKİ ŞERİT NE DİYOR
+--------------------------------------------------------------
+YEŞİL "Yönetici"
+    Her şey yolunda, tıklamalar ekrandaki her şeye ulaşır.
+
+TURUNCU "Yönetici değil"
+    Tıklamalar bazı oyunlara ulaşmaz. Sağdaki
+    "Yönetici olarak çalıştır" düğmesine bas ve "Evet" de.
+
+
+5) DOSYA KENDİLİĞİNDEN KAYBOLDUYSA
+--------------------------------------------------------------
+Program kendini silmez. Windows Defender onu karantinaya
+almış olabilir - otomatik tıklayıcılar sık sık işaretlenir.
+
+Geri almak için:
+  Windows Güvenliği > Koruma geçmişi >
+  ilgili kaydı aç > Eylemler > Geri yükle
+
+
+6) SİLMEK İSTERSEN
+--------------------------------------------------------------
+Bu klasörü çöp kutusuna at, o kadar. Program bilgisayara
+kurulum yapmaz, kayıt defterine dokunmaz, başka hiçbir yere
+dosya yazmaz.
+
+
+--------------------------------------------------------------
+Güncel sürüm, kaynak kod ve daha ayrıntılı anlatım:
+https://github.com/OzanSandikcioglu/AutoClicker
+
+Lisans: MIT - ücretsiz ve açık kaynak
+==============================================================
