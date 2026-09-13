@@ -18,9 +18,9 @@ from src.mouse import (HOLD_SECONDS, INJECT_TAG, begin_high_resolution_timer,
                        is_shell_window, top_level_at, top_level_of, win32_click_mouse,
                        win32_move_mouse, win32_press_mouse, win32_release_mouse)
 from src.hotkey import get_key_name, get_mouse_name, is_mouse_hotkey
-from src.elevation import is_elevated, relaunch_as_admin
 from src.pattern import PatternRecorder
 from src.overlay import RecordingBorder
+from src.widgets import Segmented, round_rect
 
 
 class AutoClicker:
@@ -42,9 +42,6 @@ class AutoClicker:
         self.click_count = 0
         self.click_thread = None
         self.holding = False
-        # Windows drops injected clicks aimed at higher integrity windows, and
-        # says nothing about it - so tell the user where they stand up front.
-        self.elevated = is_elevated()
 
         # -- Threading --
         # The click worker and the keyboard listener never touch Tk directly:
@@ -76,6 +73,8 @@ class AutoClicker:
         self.v_dur_m = tk.StringVar(value="5")
         self.v_dur_s = tk.StringVar(value="0")
         self.v_gap = tk.StringVar(value="500")
+        self.v_lang = tk.StringVar(value=self.lang)
+        self.v_mode = tk.StringVar(value=self.mode)
         
         # -- Hotkey binding state --
         self.v_hotkey_str = "F6"
@@ -106,6 +105,11 @@ class AutoClicker:
 
         self._sync_mouse_listener()
 
+        # traced only now, so building the UI cannot trip them
+        self.v_lang.trace_add("write", lambda *_a: self._on_lang_var())
+        self.v_mode.trace_add("write", lambda *_a: self._on_mode_var())
+        self.v_repeat.trace_add("write", lambda *_a: self._sync_repeat_fields())
+
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self._pump()
 
@@ -126,20 +130,20 @@ class AutoClicker:
     #  BUILD UI
     # =========================================================================
 
+    FONT = "Segoe UI"
+    MONO = "Consolas"
+
     def _build(self):
-        self.root.configure(bg=self._c("bg_main"))
+        self.root.configure(bg=self._c("bg"))
         self._vcmd = (self.root.register(self._validate_number), "%P")
 
-        # -- Top accent line (plain color, no emoji) --
-        self.w["top_line"] = tk.Frame(self.root, height=3)
+        self.w["top_line"] = tk.Frame(self.root, height=2)
         self.w["top_line"].pack(fill="x")
 
-        # -- Main container --
-        self.w["main"] = tk.Frame(self.root, padx=22, pady=14)
+        self.w["main"] = tk.Frame(self.root, padx=18, pady=16)
         self.w["main"].pack(fill="both", expand=True)
 
         self._build_header()
-        self._build_toolbar()
         self._build_mode_tabs()
         self._build_interval()
         self._build_settings()
@@ -148,9 +152,198 @@ class AutoClicker:
         self._build_hotkeys()
         self._build_button()
         self._build_status()
-        self._build_admin()
         self._set_mode(self.mode)
         self._install_click_guard()
+
+    # --- Small building blocks ------------------------------------------------
+
+    def _card(self, key):
+        """A flat panel. The surface colour carries it - no drawn borders."""
+        card = tk.Frame(self.w["main"], padx=16, pady=14)
+        self.w[key] = card
+        return card
+
+    def _upper(self, text):
+        """Uppercase that keeps the Turkish dotted capital I intact."""
+        if self.lang == "TR":
+            text = text.replace("i", "\u0130")
+        return text.upper()
+
+    def _section(self, parent, key, text):
+        """A quiet uppercase label introducing a group of controls."""
+        label = tk.Label(parent, text=self._upper(text), font=(self.FONT, 8, "bold"),
+                         anchor="w")
+        label.pack(fill="x", pady=(0, 9))
+        self.w[key] = label
+        return label
+
+    def _field(self, parent, key, var, caption, width=5, size=14):
+        """A number box with its unit underneath and a ring when focused."""
+        holder = tk.Frame(parent)
+        ring = tk.Frame(holder, padx=1, pady=1)
+        ring.pack(fill="x")
+        entry = tk.Entry(ring, textvariable=var, width=width, relief="flat",
+                         justify="center", highlightthickness=0, bd=0,
+                         font=(self.MONO, size, "bold"),
+                         validate="key", validatecommand=self._vcmd)
+        entry.pack(fill="x", ipady=6)
+        entry.bind("<FocusIn>", lambda _e, r=ring: r.configure(bg=self._c("accent")))
+        entry.bind("<FocusOut>", lambda _e, r=ring: r.configure(bg=self._c("border")))
+        unit = tk.Label(holder, text=caption, font=(self.FONT, 8))
+        unit.pack(pady=(5, 0))
+        self.w[f"holder_{key}"] = holder
+        self.w[f"ring_{key}"] = ring
+        self.w[f"e_{key}"] = entry
+        self.w[f"l_{key}"] = unit
+        return holder
+
+    def _soft_button(self, parent, key, text, command, width=9, accent=False):
+        button = tk.Button(parent, text=text, font=(self.FONT, 9, "bold"),
+                           relief="flat", bd=0, width=width, cursor="hand2",
+                           command=command, activeforeground=self._c("on_accent"))
+        self.w[key] = button
+        self.w.setdefault("_accent_buttons", set())
+        if accent:
+            self.w["_accent_buttons"].add(key)
+        return button
+
+    # --- Header ---------------------------------------------------------------
+
+    def _build_header(self):
+        head = tk.Frame(self.w["main"])
+        head.pack(fill="x", pady=(0, 14))
+        self.w["hdr"] = head
+
+        self.w["logo"] = tk.Canvas(head, width=38, height=38, highlightthickness=0,
+                                   bd=0)
+        self.w["logo"].pack(side="left", padx=(0, 11))
+
+        titles = tk.Frame(head)
+        titles.pack(side="left")
+        self.w["hdr_titles"] = titles
+
+        row = tk.Frame(titles)
+        row.pack(anchor="w")
+        self.w["hdr_row"] = row
+        self.w["t1"] = tk.Label(row, text="Auto", font=(self.FONT, 17, "bold"))
+        self.w["t1"].pack(side="left")
+        self.w["t2"] = tk.Label(row, text="Clicker", font=(self.FONT, 17, "bold"))
+        self.w["t2"].pack(side="left")
+
+        self.w["sub"] = tk.Label(titles, text=self._t("subtitle"),
+                                 font=(self.FONT, 8))
+        self.w["sub"].pack(anchor="w")
+
+        self.w["theme_btn"] = tk.Canvas(head, width=64, height=30, bd=0,
+                                        highlightthickness=0, cursor="hand2")
+        self.w["theme_btn"].pack(side="right")
+        self.w["theme_btn"].bind("<Button-1>", lambda _e: self._toggle_theme())
+
+        self.w["lang_seg"] = Segmented(
+            self.w["main"], self.v_lang,
+            [(code, code) for code in LANG_ORDER], self._c,
+            font=(self.FONT, 8, "bold"), height=26, ground="bg")
+        self.w["lang_seg"].pack(fill="x", pady=(0, 10))
+
+    def _draw_logo(self):
+        canvas = self.w["logo"]
+        canvas.delete("all")
+        canvas.configure(bg=self._c("bg"))
+        round_rect(canvas, 0, 0, 38, 38, 11, fill=self._c("accent"), outline="")
+        canvas.create_polygon(22, 8, 15, 21, 19, 21, 16, 30, 24, 17, 20, 17, 23, 8,
+                              fill="#ffffff", outline="")
+
+    @staticmethod
+    def _draw_sun(canvas, cx, cy, colour):
+        canvas.create_oval(cx - 4, cy - 4, cx + 4, cy + 4, fill=colour, outline="")
+        for dx, dy in ((0, -8), (0, 8), (-8, 0), (8, 0),
+                       (-6, -6), (6, 6), (-6, 6), (6, -6)):
+            canvas.create_line(cx + dx * 0.72, cy + dy * 0.72,
+                               cx + dx, cy + dy, fill=colour, width=2,
+                               capstyle="round")
+
+    @staticmethod
+    def _draw_moon(canvas, cx, cy, colour, behind):
+        canvas.create_oval(cx - 7, cy - 7, cx + 7, cy + 7, fill=colour, outline="")
+        canvas.create_oval(cx - 11, cy - 9, cx + 3, cy + 5, fill=behind, outline="")
+
+    def _draw_theme_btn(self):
+        """Two halves, sun and moon, with the active one filled - the same
+        shape as every other choice on the window, so it reads as a switch."""
+        canvas = self.w["theme_btn"]
+        canvas.delete("all")
+        canvas.configure(bg=self._c("bg"))
+        track = self._c("surface_alt")
+        round_rect(canvas, 0, 0, 64, 30, 15, fill=track, outline="")
+
+        dark = self.theme == "dark"
+        accent = self._c("accent")
+        if dark:
+            round_rect(canvas, 33, 2, 62, 28, 13, fill=accent, outline="")
+        else:
+            round_rect(canvas, 2, 2, 31, 28, 13, fill=accent, outline="")
+
+        self._draw_sun(canvas, 16, 15,
+                       self._c("on_accent") if not dark else self._c("text_faint"))
+        self._draw_moon(canvas, 48, 15,
+                        self._c("on_accent") if dark else self._c("text_faint"),
+                        accent if dark else track)
+
+    # --- Mode tabs ------------------------------------------------------------
+
+    MODE_CARDS = {"clicker": ("int_outer", "set_outer"),
+                  "pattern": ("pat_outer", "rep_outer")}
+
+    def _build_mode_tabs(self):
+        self.w["mode_seg"] = Segmented(
+            self.w["main"], self.v_mode,
+            [("clicker", self._t("mode_clicker")), ("pattern", self._t("mode_pattern"))],
+            self._c, font=(self.FONT, 10, "bold"), height=36, ground="bg")
+        self.w["mode_seg"].pack(fill="x", pady=(0, 12))
+
+    def _style_mode_tabs(self):
+        self.w["mode_seg"].redraw()
+
+    def _on_mode_var(self):
+        wanted = self.v_mode.get()
+        if wanted == self.mode:
+            return
+        if self.clicking or self.recording:
+            self.v_mode.set(self.mode)        # refused, put the tab back
+            return
+        self._set_mode(wanted)
+
+    def _set_mode(self, mode):
+        """Swap which pair of cards is on screen. Not while something runs."""
+        if self.clicking or self.recording:
+            return
+        self.mode = mode
+        if self.v_mode.get() != mode:
+            self.v_mode.set(mode)
+        for keys in self.MODE_CARDS.values():
+            for key in keys:
+                self.w[key].pack_forget()
+        for key in self.MODE_CARDS[mode]:
+            self.w[key].pack(fill="x", pady=(0, 10), before=self.w["hk_row"])
+        if mode == "pattern":
+            self.w["hk_right"].pack(side="right")
+        else:
+            self.w["hk_right"].pack_forget()
+        self._style_mode_tabs()
+        self._fit_window()
+        self._draw_btn()
+
+    def _fit_window(self):
+        """Height follows the mode. The pattern cards need noticeably more room
+        than the clicker ones, and one fixed height leaves the other mode
+        looking half empty - or clips this one."""
+        try:
+            self.root.update_idletasks()
+            need = (self.w["main"].winfo_reqheight()
+                    + self.w["top_line"].winfo_reqheight())
+            self.root.geometry(f"{self.WIDTH}x{max(need, 400)}")
+        except tk.TclError:
+            pass
 
     # --- Self-click guard -----------------------------------------------------
 
@@ -185,433 +378,127 @@ class AutoClicker:
         if is_injected_event():
             return "break"
 
-    # --- Header --------------------------------------------------------------
-
-    def _build_header(self):
-        p = self.w["main"]
-        hdr = tk.Frame(p)
-        hdr.pack(fill="x", pady=(0, 8))
-        self.w["hdr"] = hdr
-
-        # Logo circle (drawn with canvas, no emoji)
-        self.w["logo"] = tk.Canvas(hdr, width=44, height=44, highlightthickness=0)
-        self.w["logo"].pack(side="left", padx=(0, 12))
-
-        # Title
-        tcol = tk.Frame(hdr)
-        tcol.pack(side="left")
-        self.w["hdr_tcol"] = tcol
-
-        trow = tk.Frame(tcol)
-        trow.pack(anchor="w")
-        self.w["hdr_trow"] = trow
-
-        self.w["t1"] = tk.Label(trow, text="Auto", font=("Segoe UI", 22, "bold"))
-        self.w["t1"].pack(side="left")
-
-        self.w["t2"] = tk.Label(trow, text="Clicker", font=("Segoe UI", 22, "bold"))
-        self.w["t2"].pack(side="left")
-
-        self.w["sub"] = tk.Label(tcol, text=self._t("subtitle"), font=("Segoe UI", 9))
-        self.w["sub"].pack(anchor="w", pady=(1, 0))
-
-    def _draw_logo(self):
-        c = self.w["logo"]
-        c.delete("all")
-        bg = self._c("bg_main")
-        c.configure(bg=bg)
-        c.create_oval(2, 2, 42, 42, fill=self._c("bg_card"), outline=self._c("accent"), width=2)
-        # Lightning bolt drawn as polygon (no emoji)
-        c.create_polygon(
-            24, 8, 16, 24, 21, 24, 18, 36, 28, 20, 23, 20, 26, 8,
-            fill=self._c("accent_gold"), outline=""
-        )
-
-    # --- Toolbar (Lang + Theme) -----------------------------------------------
-
-    def _build_toolbar(self):
-        p = self.w["main"]
-        bar = tk.Frame(p)
-        bar.pack(fill="x", pady=(0, 4))
-        self.w["toolbar"] = bar
-
-        # Language buttons
-        lf = tk.Frame(bar)
-        lf.pack(side="left")
-        self.w["lf"] = lf
-
-        self.w["lang_lbl"] = tk.Label(lf, text=self._t("lang"), font=("Segoe UI", 8))
-        self.w["lang_lbl"].pack(side="left", padx=(0, 6))
-
-        self.lang_btns = {}
-        for code in LANG_ORDER:
-            btn = tk.Label(
-                lf, text=code, font=("Segoe UI", 8, "bold"),
-                padx=6, pady=2, cursor="hand2"
-            )
-            btn.pack(side="left", padx=1)
-            btn.bind("<Button-1>", lambda e, c=code: self._set_lang(c))
-            btn.bind("<Enter>", lambda e, b=btn, c=code: self._lang_hover(b, c, True))
-            btn.bind("<Leave>", lambda e, b=btn, c=code: self._lang_hover(b, c, False))
-            self.lang_btns[code] = btn
-
-        # Theme toggle
-        tf = tk.Frame(bar)
-        tf.pack(side="right")
-        self.w["tf"] = tf
-
-        self.w["theme_lbl"] = tk.Label(tf, text=self._t("theme"), font=("Segoe UI", 8))
-        self.w["theme_lbl"].pack(side="left", padx=(0, 6))
-
-        self.w["toggle"] = tk.Canvas(tf, width=48, height=24, highlightthickness=0, cursor="hand2")
-        self.w["toggle"].pack(side="left")
-        self.w["toggle"].bind("<Button-1>", lambda e: self._toggle_theme())
-
-        # Dark/Light text label (no emoji)
-        self.w["mode_txt"] = tk.Label(tf, text="Dark", font=("Segoe UI", 8, "bold"), cursor="hand2")
-        self.w["mode_txt"].pack(side="left", padx=(4, 0))
-        self.w["mode_txt"].bind("<Button-1>", lambda e: self._toggle_theme())
-
-        # Separator
-        self.w["sep"] = tk.Frame(p, height=1)
-        self.w["sep"].pack(fill="x", pady=(4, 8))
-
-    def _lang_hover(self, btn, code, entering):
-        if entering and code != self.lang:
-            btn.configure(bg=self._c("accent_hover"), fg="#ffffff")
-        else:
-            self._style_lang_btn(btn, code)
-
-    def _style_lang_btn(self, btn, code):
-        if code == self.lang:
-            btn.configure(bg=self._c("accent"), fg="#ffffff")
-        else:
-            btn.configure(bg=self._c("bg_input"), fg=self._c("text_secondary"))
-
-    def _draw_toggle(self):
-        c = self.w["toggle"]
-        c.delete("all")
-        bg = self._c("bg_main")
-        c.configure(bg=bg)
-
-        is_dark = self.theme == "dark"
-        pill = self._c("accent") if is_dark else self._c("border")
-        knob_clr = "#edf0f7" if is_dark else "#ffffff"
-
-        # Pill shape
-        c.create_oval(0, 0, 24, 24, fill=pill, outline="")
-        c.create_oval(24, 0, 48, 24, fill=pill, outline="")
-        c.create_rectangle(12, 0, 36, 24, fill=pill, outline="")
-
-        # Knob
-        kx = 32 if is_dark else 16
-        c.create_oval(kx - 9, 3, kx + 9, 21, fill=knob_clr, outline="")
-
-        self.w["mode_txt"].configure(text="Dark" if is_dark else "Light")
-
-    # --- Interval Card --------------------------------------------------------
+    # --- Interval card --------------------------------------------------------
 
     def _build_interval(self):
-        p = self.w["main"]
-        outer = tk.Frame(p, padx=1, pady=1)
-        self.w["int_outer"] = outer
+        card = self._card("int_outer")
+        self._section(card, "int_title", self._t("interval_title"))
 
-        card = tk.Frame(outer, padx=14, pady=10)
-        card.pack(fill="both")
-        self.w["int_card"] = card
+        row = tk.Frame(card)
+        row.pack(fill="x")
+        self.w["int_row"] = row
+        for key, var in (("hours", self.v_hours), ("minutes", self.v_min),
+                         ("seconds", self.v_sec), ("milliseconds", self.v_ms)):
+            field = self._field(row, key, var, self._t(key))
+            field.pack(side="left", expand=True, fill="x", padx=3)
 
-        # Title row
-        tr = tk.Frame(card)
-        tr.pack(fill="x", pady=(0, 8))
-        self.w["int_tr"] = tr
-
-        self.w["int_dot"] = tk.Canvas(tr, width=8, height=8, highlightthickness=0)
-        self.w["int_dot"].pack(side="left", padx=(0, 8), pady=4)
-
-        self.w["int_title"] = tk.Label(tr, text=self._t("interval_title"),
-                                        font=("Segoe UI", 10, "bold"))
-        self.w["int_title"].pack(side="left")
-
-        # Inputs row
-        irow = tk.Frame(card)
-        irow.pack(fill="x")
-        self.w["int_irow"] = irow
-
-        for key, var in [("hours", self.v_hours), ("minutes", self.v_min),
-                         ("seconds", self.v_sec), ("milliseconds", self.v_ms)]:
-            f = tk.Frame(irow)
-            f.pack(side="left", expand=True, fill="x", padx=3)
-
-            eb = tk.Frame(f, padx=1, pady=1)
-            eb.pack(side="top", pady=(0, 2))
-            self.w[f"eb_{key}"] = eb
-
-            e = tk.Entry(eb, textvariable=var, width=5, font=("Consolas", 12, "bold"),
-                         relief="flat", justify="center", highlightthickness=0,
-                         validate="key", validatecommand=self._vcmd)
-            e.pack(ipady=3)
-            e.bind("<FocusIn>", lambda ev, b=eb: b.configure(bg=self._c("accent")))
-            e.bind("<FocusOut>", lambda ev, b=eb: b.configure(bg=self._c("border")))
-            self.w[f"e_{key}"] = e
-
-            l = tk.Label(f, text=self._t(key), font=("Segoe UI", 7))
-            l.pack(side="top")
-            self.w[f"l_{key}"] = l
-
-    # --- Settings Card --------------------------------------------------------
+    # --- Click settings card --------------------------------------------------
 
     def _build_settings(self):
-        p = self.w["main"]
-        outer = tk.Frame(p, padx=1, pady=1)
-        self.w["set_outer"] = outer
+        card = self._card("set_outer")
+        self._section(card, "set_title", self._t("settings_title"))
 
-        card = tk.Frame(outer, padx=14, pady=10)
-        card.pack(fill="both")
-        self.w["set_card"] = card
+        self.w["ct_seg"] = Segmented(
+            card, self.v_click_type,
+            [(key, self._t(key)) for key in CLICK_KEYS], self._c,
+            font=(self.FONT, 9, "bold"), height=32)
+        self.w["ct_seg"].pack(fill="x")
 
-        # Title row
-        tr = tk.Frame(card)
-        tr.pack(fill="x", pady=(0, 8))
-        self.w["set_tr"] = tr
-
-        self.w["set_dot"] = tk.Canvas(tr, width=8, height=8, highlightthickness=0)
-        self.w["set_dot"].pack(side="left", padx=(0, 8), pady=4)
-
-        self.w["set_title"] = tk.Label(tr, text=self._t("settings_title"),
-                                        font=("Segoe UI", 10, "bold"))
-        self.w["set_title"].pack(side="left")
-
-        # Click type
-        r1 = tk.Frame(card)
-        r1.pack(fill="x", pady=(0, 6))
-        self.w["r1"] = r1
-
-        self.w["ct_lbl"] = tk.Label(r1, text=self._t("click_type"),
-                                     font=("Segoe UI", 9), width=10, anchor="w")
-        self.w["ct_lbl"].pack(side="left")
-
-        self.ct_rbs = []
-        for key in CLICK_KEYS:
-            rb = tk.Radiobutton(r1, text=self._t(key), variable=self.v_click_type,
-                                value=key, font=("Segoe UI", 9), highlightthickness=0)
-            rb.pack(side="left", padx=(4, 0))
-            self.ct_rbs.append((rb, key))
-
-        # Mouse button
-        r2 = tk.Frame(card)
-        r2.pack(fill="x", pady=(0, 6))
-        self.w["r2"] = r2
-
-        self.w["mb_lbl"] = tk.Label(r2, text=self._t("mouse_btn"),
-                                     font=("Segoe UI", 9), width=10, anchor="w")
-        self.w["mb_lbl"].pack(side="left")
-
-        self.mb_rbs = []
-        for key in MBTN_KEYS:
-            rb = tk.Radiobutton(r2, text=self._t(key), variable=self.v_mbtn,
-                                value=key, font=("Segoe UI", 9), highlightthickness=0)
-            rb.pack(side="left", padx=(4, 0))
-            self.mb_rbs.append((rb, key))
-
-    # --- Hotkey row -----------------------------------------------------------
-
-    def _build_hotkeys(self):
-        """Both hotkeys live here rather than inside a mode card: they work in
-        either mode, so they have to be reachable from either one."""
-        p = self.w["main"]
-        row = tk.Frame(p)
-        row.pack(fill="x", pady=(0, 6))
-        self.w["hk_row"] = row
-
-        left = tk.Frame(row)
-        left.pack(side="left")
-        self.w["hk_left"] = left
-        self.w["hk_lbl"] = tk.Label(left, text=self._t("hotkey"), font=("Segoe UI", 9))
-        self.w["hk_lbl"].pack(side="left", padx=(0, 6))
-        self.w["hk_btn"] = tk.Button(left, text=self.v_hotkey_str,
-                                     font=("Consolas", 9, "bold"), relief="flat",
-                                     width=11, cursor="hand2",
-                                     command=lambda: self._start_binding("main"))
-        self.w["hk_btn"].pack(side="left")
-
-        # packed only in pattern mode, where recording exists
-        right = tk.Frame(row)
-        self.w["hk_right"] = right
-        self.w["rec_hk_lbl"] = tk.Label(right, text=self._t("rec_hotkey"),
-                                        font=("Segoe UI", 9))
-        self.w["rec_hk_lbl"].pack(side="left", padx=(0, 6))
-        self.w["rec_hk_btn"] = tk.Button(right, text=self.v_rec_hotkey_str,
-                                         font=("Consolas", 9, "bold"), relief="flat",
-                                         width=11, cursor="hand2",
-                                         command=lambda: self._start_binding("record"))
-        self.w["rec_hk_btn"].pack(side="left")
-
-    # --- Mode tabs ------------------------------------------------------------
-
-    MODE_CARDS = {"clicker": ("int_outer", "set_outer"),
-                  "pattern": ("pat_outer", "rep_outer")}
-
-    def _build_mode_tabs(self):
-        p = self.w["main"]
-        bar = tk.Frame(p)
-        bar.pack(fill="x", pady=(0, 8))
-        self.w["mode_bar"] = bar
-
-        self.mode_btns = {}
-        for key in ("clicker", "pattern"):
-            btn = tk.Label(bar, text=self._t(f"mode_{key}"), font=("Segoe UI", 9, "bold"),
-                           padx=16, pady=5, cursor="hand2")
-            btn.pack(side="left", padx=(0, 4))
-            btn.bind("<Button-1>", lambda e, k=key: self._set_mode(k))
-            self.mode_btns[key] = btn
-
-    def _style_mode_tabs(self):
-        for key, btn in self.mode_btns.items():
-            if key == self.mode:
-                btn.configure(bg=self._c("accent"), fg="#ffffff")
-            else:
-                btn.configure(bg=self._c("bg_input"), fg=self._c("text_secondary"))
-
-    def _set_mode(self, mode):
-        """Swap which pair of cards is on screen. Not while something runs."""
-        if self.clicking or self.recording:
-            return
-        self.mode = mode
-        for keys in self.MODE_CARDS.values():
-            for key in keys:
-                self.w[key].pack_forget()
-        for key in self.MODE_CARDS[mode]:
-            self.w[key].pack(fill="x", pady=(0, 8), before=self.w["hk_row"])
-        if mode == "pattern":
-            self.w["hk_right"].pack(side="right")
-        else:
-            self.w["hk_right"].pack_forget()
-        self._style_mode_tabs()
-        self._fit_window()
-        self._draw_btn()
-
-    def _fit_window(self):
-        """Height follows the mode. The pattern cards need noticeably more room
-        than the clicker ones, and one fixed height leaves the other mode
-        looking half empty - or clips this one."""
-        try:
-            self.root.update_idletasks()
-            need = (self.w["main"].winfo_reqheight()
-                    + self.w["top_line"].winfo_reqheight())
-            self.root.geometry(f"{self.WIDTH}x{max(need, 400)}")
-        except tk.TclError:
-            pass
+        self.w["mb_seg"] = Segmented(
+            card, self.v_mbtn,
+            [(key, self._t(key)) for key in MBTN_KEYS], self._c,
+            font=(self.FONT, 9, "bold"), height=32)
+        self.w["mb_seg"].pack(fill="x", pady=(8, 0))
 
     # --- Pattern card ---------------------------------------------------------
 
     def _build_pattern(self):
-        p = self.w["main"]
-        outer = tk.Frame(p, padx=1, pady=1)
-        self.w["pat_outer"] = outer
+        card = self._card("pat_outer")
 
-        card = tk.Frame(outer, padx=14, pady=10)
-        card.pack(fill="both")
-        self.w["pat_card"] = card
-
-        tr = tk.Frame(card)
-        tr.pack(fill="x", pady=(0, 8))
-        self.w["pat_tr"] = tr
-
-        self.w["pat_dot"] = tk.Canvas(tr, width=8, height=8, highlightthickness=0)
-        self.w["pat_dot"].pack(side="left", padx=(0, 8), pady=4)
-        self.w["pat_title"] = tk.Label(tr, text=self._t("pattern_title"),
-                                       font=("Segoe UI", 10, "bold"))
+        head = tk.Frame(card)
+        head.pack(fill="x", pady=(0, 9))
+        self.w["pat_head"] = head
+        self.w["pat_title"] = tk.Label(head, text=self._upper(self._t("pattern_title")),
+                                       font=(self.FONT, 8, "bold"))
         self.w["pat_title"].pack(side="left")
-        self.w["pat_count"] = tk.Label(tr, text="", font=("Segoe UI", 8))
+        self.w["pat_count"] = tk.Label(head, text="", font=(self.FONT, 8, "bold"))
         self.w["pat_count"].pack(side="right")
 
         row = tk.Frame(card)
         row.pack(fill="x")
         self.w["pat_row"] = row
-
-        self.w["rec_btn"] = tk.Button(row, text=self._t("record"),
-                                      font=("Segoe UI", 9, "bold"), relief="flat",
-                                      width=14, cursor="hand2",
-                                      command=self._toggle_recording)
-        self.w["rec_btn"].pack(side="left")
-        self.w["clr_btn"] = tk.Button(row, text=self._t("clear"), font=("Segoe UI", 9),
-                                      relief="flat", width=8, cursor="hand2",
-                                      command=self._clear_pattern)
-        self.w["clr_btn"].pack(side="right")
-        self.w["undo_btn"] = tk.Button(row, text=self._t("undo"), font=("Segoe UI", 9),
-                                       relief="flat", width=8, cursor="hand2",
-                                       command=self._undo_step)
-        self.w["undo_btn"].pack(side="right", padx=(0, 6))
+        self._soft_button(row, "rec_btn", self._t("record"), self._toggle_recording,
+                          width=13, accent=True).pack(side="left", ipady=4)
+        self._soft_button(row, "clr_btn", self._t("clear"),
+                          self._clear_pattern).pack(side="right", ipady=4)
+        self._soft_button(row, "undo_btn", self._t("undo"),
+                          self._undo_step).pack(side="right", padx=(0, 6), ipady=4)
 
         self.w["pat_hint"] = tk.Label(card, text=self._t("pattern_hint"),
-                                      font=("Segoe UI", 8), anchor="w",
-                                      justify="left", wraplength=356)
-        self.w["pat_hint"].pack(fill="x", pady=(7, 7))
+                                      font=(self.FONT, 8), anchor="w",
+                                      justify="left", wraplength=352)
+        self.w["pat_hint"].pack(fill="x", pady=(10, 9))
 
-        self.w["pat_list"] = tk.Listbox(card, height=5, font=("Consolas", 8),
-                                        relief="flat", highlightthickness=0,
-                                        activestyle="none", borderwidth=0,
-                                        selectmode="none")
+        self.w["pat_list"] = tk.Listbox(card, height=5, font=(self.MONO, 8),
+                                        relief="flat", highlightthickness=0, bd=0,
+                                        activestyle="none", selectmode="none")
         self.w["pat_list"].pack(fill="x")
 
     # --- Repeat card ----------------------------------------------------------
 
     def _build_repeat(self):
-        p = self.w["main"]
-        outer = tk.Frame(p, padx=1, pady=1)
-        self.w["rep_outer"] = outer
+        card = self._card("rep_outer")
+        self._section(card, "rep_title", self._t("repeat_title"))
 
-        card = tk.Frame(outer, padx=14, pady=10)
-        card.pack(fill="both")
-        self.w["rep_card"] = card
+        self.w["rep_seg"] = Segmented(
+            card, self.v_repeat,
+            [("forever", self._t("repeat_forever")),
+             ("duration", self._t("repeat_duration"))],
+            self._c, font=(self.FONT, 9, "bold"), height=32)
+        self.w["rep_seg"].pack(fill="x")
 
-        tr = tk.Frame(card)
-        tr.pack(fill="x", pady=(0, 8))
-        self.w["rep_tr"] = tr
-        self.w["rep_dot"] = tk.Canvas(tr, width=8, height=8, highlightthickness=0)
-        self.w["rep_dot"].pack(side="left", padx=(0, 8), pady=4)
-        self.w["rep_title"] = tk.Label(tr, text=self._t("repeat_title"),
-                                       font=("Segoe UI", 10, "bold"))
-        self.w["rep_title"].pack(side="left")
-
-        r1 = tk.Frame(card)
-        r1.pack(fill="x")
-        self.w["rep_r1"] = r1
-        self.w["rb_forever"] = tk.Radiobutton(r1, text=self._t("repeat_forever"),
-                                              variable=self.v_repeat, value="forever",
-                                              font=("Segoe UI", 9), highlightthickness=0)
-        self.w["rb_forever"].pack(side="left")
-
-        r2 = tk.Frame(card)
-        r2.pack(fill="x", pady=(4, 0))
-        self.w["rep_r2"] = r2
-        self.w["rb_duration"] = tk.Radiobutton(r2, text=self._t("repeat_duration"),
-                                               variable=self.v_repeat, value="duration",
-                                               font=("Segoe UI", 9), highlightthickness=0)
-        self.w["rb_duration"].pack(side="left")
+        row = tk.Frame(card)
+        row.pack(fill="x", pady=(10, 0))
+        self.w["rep_row"] = row
         for key, var in (("hours", self.v_dur_h), ("minutes", self.v_dur_m),
                          ("seconds", self.v_dur_s)):
-            entry = tk.Entry(r2, textvariable=var, width=3, font=("Consolas", 9, "bold"),
-                             relief="flat", justify="center", highlightthickness=0,
-                             validate="key", validatecommand=self._vcmd)
-            entry.pack(side="left", padx=(6, 2), ipady=2)
-            self.w[f"dur_{key}"] = entry
-            label = tk.Label(r2, text=self._t(key), font=("Segoe UI", 7))
-            label.pack(side="left")
-            self.w[f"durl_{key}"] = label
+            field = self._field(row, f"dur_{key}", var, self._t(key), width=4, size=11)
+            field.pack(side="left", expand=True, fill="x", padx=3)
 
-        r3 = tk.Frame(card)
-        r3.pack(fill="x", pady=(8, 0))
-        self.w["rep_r3"] = r3
-        self.w["gap_lbl"] = tk.Label(r3, text=self._t("repeat_gap"), font=("Segoe UI", 9))
+        # the gap between passes belongs to both repeat modes, not to the
+        # duration next to it, so it gets its own line
+        gap_row = tk.Frame(card)
+        gap_row.pack(fill="x", pady=(13, 0))
+        self.w["gap_row"] = gap_row
+        self.w["gap_lbl"] = tk.Label(gap_row, text=self._t("repeat_gap"),
+                                     font=(self.FONT, 9))
         self.w["gap_lbl"].pack(side="left")
-        self.w["gap_entry"] = tk.Entry(r3, textvariable=self.v_gap, width=6,
-                                       font=("Consolas", 9, "bold"), relief="flat",
-                                       justify="center", highlightthickness=0,
-                                       validate="key", validatecommand=self._vcmd)
-        self.w["gap_entry"].pack(side="left", padx=(8, 2), ipady=2)
-        self.w["gap_unit"] = tk.Label(r3, text=self._t("milliseconds"), font=("Segoe UI", 7))
-        self.w["gap_unit"].pack(side="left")
+        self.w["l_gap"] = tk.Label(gap_row, text=self._t("milliseconds"),
+                                   font=(self.FONT, 8))
+        self.w["l_gap"].pack(side="right", padx=(7, 0))
+        ring = tk.Frame(gap_row, padx=1, pady=1)
+        ring.pack(side="right")
+        self.w["ring_gap"] = ring
+        self.w["e_gap"] = tk.Entry(ring, textvariable=self.v_gap, width=6,
+                                   relief="flat", justify="center", bd=0,
+                                   highlightthickness=0,
+                                   font=(self.MONO, 10, "bold"),
+                                   validate="key", validatecommand=self._vcmd)
+        self.w["e_gap"].pack(ipady=4)
+        self.w["e_gap"].bind("<FocusIn>",
+                             lambda _e: self.w["ring_gap"].configure(bg=self._c("accent")))
+        self.w["e_gap"].bind("<FocusOut>",
+                             lambda _e: self.w["ring_gap"].configure(bg=self._c("border")))
+
+    def _sync_repeat_fields(self):
+        """Grey the duration boxes out while the pattern repeats forever."""
+        live = self.v_repeat.get() == "duration"
+        for key in ("dur_hours", "dur_minutes", "dur_seconds"):
+            self.w[f"e_{key}"].configure(state="normal" if live else "disabled")
+            self.w[f"l_{key}"].configure(
+                fg=self._c("text_faint") if live else self._c("border"))
+            self.w[f"ring_{key}"].configure(
+                bg=self._c("border") if live else self._c("surface_alt"))
 
     # --- Recording ------------------------------------------------------------
 
@@ -631,7 +518,7 @@ class AutoClicker:
         # screen has to be the thing that says recording is on.
         self.rec_border.show()
         self._sync_mouse_listener()
-        self.w["st_lbl"].config(text=self._t("recording"), fg=self._c("accent_gold"))
+        self.w["st_lbl"].config(text=self._t("recording"), fg=self._c("warn"))
         self._refresh_pattern_ui()
 
     def _stop_recording(self):
@@ -640,7 +527,7 @@ class AutoClicker:
         self.recording = False
         self.rec_border.hide()
         self._sync_mouse_listener()
-        self.w["st_lbl"].config(text=self._t("stopped"), fg=self._c("text_secondary"))
+        self.w["st_lbl"].config(text=self._t("stopped"), fg=self._c("text_dim"))
         self._refresh_pattern_ui()
 
     def _undo_step(self):
@@ -671,296 +558,211 @@ class AutoClicker:
         box = self.w["pat_list"]
         box.delete(0, "end")
         for index, step in enumerate(steps, 1):
-            box.insert("end", f"{index:>3}. ({step.x:>5},{step.y:>5})  "
-                              f"{self._t(step.button):<6} +{step.delay:.2f}s")
+            box.insert("end", f" {index:>3}.  {step.x:>5} , {step.y:<5}  "
+                              f"{self._t(step.button):<7} +{step.delay:.2f}s")
         box.see("end")
         self.w["pat_count"].config(text=f"{len(steps)} {self._t('steps')}")
         self.w["rec_btn"].config(
             text=self._t("stop_record") if self.recording else self._t("record"),
-            fg=self._c("red") if self.recording else self._c("accent"))
+            bg=self._c("danger") if self.recording else self._c("accent"))
 
-    # --- Toggle Button --------------------------------------------------------
+    # --- Hotkey row -----------------------------------------------------------
+
+    def _build_hotkeys(self):
+        """Both hotkeys live here rather than inside a mode card: they work in
+        either mode, so they have to be reachable from either one."""
+        row = tk.Frame(self.w["main"])
+        row.pack(fill="x", pady=(2, 12))
+        self.w["hk_row"] = row
+
+        left = tk.Frame(row)
+        left.pack(side="left")
+        self.w["hk_left"] = left
+        self.w["hk_lbl"] = tk.Label(left, text=self._t("hotkey"), font=(self.FONT, 8))
+        self.w["hk_lbl"].pack(side="left", padx=(0, 7))
+        self.w["hk_btn"] = tk.Button(left, text=self.v_hotkey_str,
+                                     font=(self.MONO, 9, "bold"), relief="flat",
+                                     bd=0, width=9, cursor="hand2",
+                                     command=lambda: self._start_binding("main"))
+        self.w["hk_btn"].pack(side="left", ipady=3)
+
+        # packed only in pattern mode, where recording exists
+        right = tk.Frame(row)
+        self.w["hk_right"] = right
+        self.w["rec_hk_lbl"] = tk.Label(right, text=self._t("rec_hotkey"),
+                                        font=(self.FONT, 8))
+        self.w["rec_hk_lbl"].pack(side="left", padx=(0, 7))
+        self.w["rec_hk_btn"] = tk.Button(right, text=self.v_rec_hotkey_str,
+                                         font=(self.MONO, 9, "bold"), relief="flat",
+                                         bd=0, width=9, cursor="hand2",
+                                         command=lambda: self._start_binding("record"))
+        self.w["rec_hk_btn"].pack(side="left", ipady=3)
+
+    # --- Start button ---------------------------------------------------------
 
     def _build_button(self):
-        p = self.w["main"]
-        bf = tk.Frame(p)
-        bf.pack(fill="x", pady=(4, 8))
-        self.w["bf"] = bf
+        frame = tk.Frame(self.w["main"])
+        frame.pack(fill="x", pady=(0, 10))
+        self.w["bf"] = frame
 
-        self.w["btn"] = tk.Canvas(bf, width=396, height=52, highlightthickness=0, cursor="hand2")
-        self.w["btn"].pack()
-        self.w["btn"].bind("<Button-1>", lambda e: self._toggle())
-        self.w["btn"].bind("<Enter>", lambda e: self._draw_btn(hover=True))
-        self.w["btn"].bind("<Leave>", lambda e: self._draw_btn(hover=False))
+        self.w["btn"] = tk.Canvas(frame, height=52, highlightthickness=0, bd=0,
+                                  cursor="hand2")
+        self.w["btn"].pack(fill="x")
+        self.w["btn"].bind("<Button-1>", lambda _e: self._toggle())
+        self.w["btn"].bind("<Enter>", lambda _e: self._draw_btn(hover=True))
+        self.w["btn"].bind("<Leave>", lambda _e: self._draw_btn(hover=False))
+        self.w["btn"].bind("<Configure>", lambda _e: self._draw_btn())
 
     def _draw_btn(self, hover=False):
-        c = self.w["btn"]
-        c.delete("all")
-        c.configure(bg=self._c("bg_main"))
+        canvas = self.w["btn"]
+        canvas.delete("all")
+        canvas.configure(bg=self._c("bg"))
+        width = max(canvas.winfo_width(), 1)
+        height = max(canvas.winfo_height(), 1)
 
         if self.clicking:
-            clr = self._c("btn_active_hov") if hover else self._c("btn_active")
+            fill = self._c("danger")
         else:
-            clr = self._c("btn_hover") if hover else self._c("btn_bg")
+            fill = self._c("accent_hover") if hover else self._c("accent")
+        round_rect(canvas, 0, 0, width, height, 13, fill=fill, outline="")
 
-        # Glow (dark only)
-        if self.theme == "dark":
-            r0, g0, b0 = int(clr[1:3], 16), int(clr[3:5], 16), int(clr[5:7], 16)
-            br, bg_, bb = int(self._c("bg_main")[1:3], 16), int(self._c("bg_main")[3:5], 16), int(self._c("bg_main")[5:7], 16)
-            for i in range(3):
-                a = 0.12 - i * 0.03
-                gc = f"#{min(int(r0*a+br*(1-a)),255):02x}{min(int(g0*a+bg_*(1-a)),255):02x}{min(int(b0*a+bb*(1-a)),255):02x}"
-                o = 3 - i
-                self._pill(c, o, o, 396 - o, 52 - o, 14, gc)
+        label = self._t("stop") if self.clicking else self._t("start")
+        canvas.create_text(width / 2, height / 2 + 1, text=label,
+                           font=(self.FONT, 13, "bold"), fill="#ffffff")
+        canvas.create_text(width - 16, height / 2 + 1, text=self.v_hotkey_str,
+                           anchor="e", font=(self.MONO, 9, "bold"),
+                           fill=self._c("on_accent_dim"))
 
-        self._pill(c, 3, 3, 393, 49, 12, clr)
-
-        hk = self.v_hotkey_str
-        sym = "||" if self.clicking else ">"
-        word = self._t("stop") if self.clicking else self._t("start")
-        c.create_text(198, 26, text=f"{sym}  {word}  ({hk})",
-                       font=("Segoe UI", 13, "bold"), fill="#ffffff")
-
-    def _pill(self, canvas, x1, y1, x2, y2, r, color):
-        pts = [x1+r,y1, x2-r,y1, x2,y1, x2,y1+r, x2,y2-r, x2,y2,
-               x2-r,y2, x1+r,y2, x1,y2, x1,y2-r, x1,y1+r, x1,y1]
-        canvas.create_polygon(pts, smooth=True, fill=color, outline="")
-
-    # --- Status Bar -----------------------------------------------------------
+    # --- Status ---------------------------------------------------------------
 
     def _build_status(self):
-        p = self.w["main"]
-        outer = tk.Frame(p, padx=1, pady=1)
-        outer.pack(fill="x")
-        self.w["st_outer"] = outer
+        card = self._card("st_outer")
+        card.configure(pady=11)
+        card.pack(fill="x", pady=(0, 10))
 
-        inner = tk.Frame(outer, padx=14, pady=8)
-        inner.pack(fill="both")
-        self.w["st_inner"] = inner
-
-        left = tk.Frame(inner)
+        left = tk.Frame(card)
         left.pack(side="left")
         self.w["st_left"] = left
-
-        self.w["st_dot"] = tk.Canvas(left, width=12, height=12, highlightthickness=0)
-        self.w["st_dot"].pack(side="left", padx=(0, 8))
-
+        self.w["st_dot"] = tk.Canvas(left, width=10, height=10, bd=0,
+                                     highlightthickness=0)
+        self.w["st_dot"].pack(side="left", padx=(0, 9), pady=2)
         self.w["st_lbl"] = tk.Label(left, text=self._t("stopped"),
-                                     font=("Segoe UI", 9, "bold"))
+                                    font=(self.FONT, 9, "bold"))
         self.w["st_lbl"].pack(side="left")
 
-        right = tk.Frame(inner)
+        right = tk.Frame(card)
         right.pack(side="right")
         self.w["st_right"] = right
-
-        self.w["cnt_lbl"] = tk.Label(right, text=self._t("clicks"), font=("Segoe UI", 9))
-        self.w["cnt_lbl"].pack(side="left")
-
-        self.w["cnt_val"] = tk.Label(right, text="0", font=("Consolas", 13, "bold"))
-        self.w["cnt_val"].pack(side="left", padx=(4, 0))
-
-    # --- Administrator notice -------------------------------------------------
-
-    def _build_admin(self):
-        p = self.w["main"]
-        outer = tk.Frame(p, padx=1, pady=1)
-        outer.pack(fill="x", pady=(8, 0))
-        self.w["adm_outer"] = outer
-
-        inner = tk.Frame(outer, padx=14, pady=8)
-        inner.pack(fill="both")
-        self.w["adm_inner"] = inner
-
-        row = tk.Frame(inner)
-        row.pack(fill="x")
-        self.w["adm_row"] = row
-
-        self.w["adm_dot"] = tk.Canvas(row, width=10, height=10, highlightthickness=0)
-        self.w["adm_dot"].pack(side="left", padx=(0, 8), pady=3)
-
-        self.w["adm_lbl"] = tk.Label(
-            row, font=("Segoe UI", 9, "bold"),
-            text=self._t("admin_ok" if self.elevated else "admin_warn"))
-        self.w["adm_lbl"].pack(side="left")
-
-        if self.elevated:
-            return
-
-        self.w["adm_btn"] = tk.Button(row, text=self._t("run_as_admin"),
-                                      font=("Segoe UI", 8, "bold"), relief="flat",
-                                      cursor="hand2", command=self._relaunch_admin)
-        self.w["adm_btn"].pack(side="right")
-
-        self.w["adm_hint"] = tk.Label(inner, text=self._t("admin_hint"),
-                                      font=("Segoe UI", 8), anchor="w",
-                                      justify="left", wraplength=360)
-        self.w["adm_hint"].pack(fill="x", pady=(5, 0))
-
-    def _relaunch_admin(self):
-        """Hand over to an elevated copy, if the user accepts the UAC prompt."""
-        if relaunch_as_admin():
-            self._on_close()
-        else:
-            self.w["adm_lbl"].config(text=self._t("admin_denied"), fg=self._c("red"))
+        self.w["cnt_val"] = tk.Label(right, text="0", font=(self.MONO, 12, "bold"))
+        self.w["cnt_val"].pack(side="right")
+        self.w["cnt_lbl"] = tk.Label(right, text=self._t("clicks"),
+                                     font=(self.FONT, 8))
+        self.w["cnt_lbl"].pack(side="right", padx=(0, 7))
 
     def _draw_st_dot(self):
-        d = self.w["st_dot"]
-        d.delete("all")
-        d.configure(bg=self._c("bg_card"))
-        clr = self._c("green") if self.clicking else self._c("red")
-        d.create_oval(1, 1, 11, 11, fill=clr, outline="")
+        dot = self.w["st_dot"]
+        dot.delete("all")
+        dot.configure(bg=self._c("surface"))
+        colour = self._c("success") if self.clicking else self._c("text_faint")
+        dot.create_oval(0, 0, 10, 10, fill=colour, outline="")
 
     # =========================================================================
-    #  THEME SYSTEM
+    #  THEME
     # =========================================================================
 
     def _apply_theme(self):
-        bg = self._c("bg_main")
-        card = self._c("bg_card")
-        inp = self._c("bg_input")
-        t1 = self._c("text_primary")
-        t2 = self._c("text_secondary")
-        tl = self._c("text_label")
-        brd = self._c("border")
-        acc = self._c("accent")
+        bg = self._c("bg")
+        surface = self._c("surface")
+        field = self._c("surface_alt")
+        border = self._c("border")
+        text = self._c("text")
+        dim = self._c("text_dim")
+        accent = self._c("accent")
 
         self.root.configure(bg=bg)
-        self.w["top_line"].configure(bg=acc)
+        self.w["top_line"].configure(bg=accent)
         self.w["main"].configure(bg=bg)
 
         # Header
-        for k in ["hdr", "hdr_tcol", "hdr_trow"]:
-            self.w[k].configure(bg=bg)
-        self.w["t1"].configure(bg=bg, fg=t1)
-        self.w["t2"].configure(bg=bg, fg=acc)
-        self.w["sub"].configure(bg=bg, fg=t2)
+        for key in ("hdr", "hdr_titles", "hdr_row"):
+            self.w[key].configure(bg=bg)
+        self.w["t1"].configure(bg=bg, fg=text)
+        self.w["t2"].configure(bg=bg, fg=accent)
+        self.w["sub"].configure(bg=bg, fg=dim)
         self._draw_logo()
+        self._draw_theme_btn()
+        self.w["lang_seg"].redraw()
+        self.w["mode_seg"].redraw()
 
-        # Toolbar
-        for k in ["toolbar", "lf", "tf"]:
-            self.w[k].configure(bg=bg)
-        self.w["lang_lbl"].configure(bg=bg, fg=t2)
-        self.w["theme_lbl"].configure(bg=bg, fg=t2)
-        self.w["mode_txt"].configure(bg=bg, fg=t2)
+        # Cards
+        for key in ("int_outer", "set_outer", "pat_outer", "rep_outer",
+                    "st_outer"):
+            self.w[key].configure(bg=surface)
+        for key in ("int_row", "rep_row", "pat_head", "pat_row", "gap_row",
+                    "st_left", "st_right"):
+            self.w[key].configure(bg=surface)
+        for key in ("int_title", "set_title", "rep_title"):
+            self.w[key].configure(bg=surface, fg=dim)
 
-        for code, btn in self.lang_btns.items():
-            self._style_lang_btn(btn, code)
+        # Number fields
+        for key in ("hours", "minutes", "seconds", "milliseconds",
+                    "dur_hours", "dur_minutes", "dur_seconds"):
+            self.w[f"holder_{key}"].configure(bg=surface)
+            self.w[f"ring_{key}"].configure(bg=border)
+            self.w[f"e_{key}"].configure(bg=field, fg=text, insertbackground=accent,
+                                         disabledbackground=field,
+                                         disabledforeground=self._c("text_faint"))
+            self.w[f"l_{key}"].configure(bg=surface, fg=self._c("text_faint"))
 
-        self._draw_toggle()
-        self.w["sep"].configure(bg=brd)
+        self.w["gap_row"].configure(bg=surface)
+        self.w["gap_lbl"].configure(bg=surface, fg=dim)
+        self.w["l_gap"].configure(bg=surface, fg=self._c("text_faint"))
+        self.w["ring_gap"].configure(bg=border)
+        self.w["e_gap"].configure(bg=field, fg=text, insertbackground=accent)
 
-        # Interval card
-        self.w["int_outer"].configure(bg=brd)
-        for k in ["int_card", "int_tr", "int_irow"]:
-            self.w[k].configure(bg=card)
-        self.w["int_title"].configure(bg=card, fg=acc)
-        dot = self.w["int_dot"]
-        dot.configure(bg=card)
-        dot.delete("all")
-        dot.create_oval(1, 1, 7, 7, fill=acc, outline="")
+        for key in ("ct_seg", "mb_seg", "rep_seg"):
+            self.w[key].redraw()
 
-        for key in ["hours", "minutes", "seconds", "milliseconds"]:
-            self.w[f"eb_{key}"].configure(bg=brd)
-            self.w[f"e_{key}"].configure(bg=inp, fg=acc, insertbackground=acc)
-            self.w[f"l_{key}"].configure(bg=card, fg=t2)
-            self.w[f"e_{key}"].master.master.configure(bg=card)
+        # Pattern card
+        self.w["pat_title"].configure(bg=surface, fg=dim)
+        self.w["pat_count"].configure(bg=surface, fg=accent)
+        self.w["pat_hint"].configure(bg=surface, fg=self._c("text_faint"))
+        self.w["pat_list"].configure(bg=field, fg=dim, selectbackground=field,
+                                     selectforeground=dim)
 
-        # Settings card
-        self.w["set_outer"].configure(bg=brd)
-        for k in ["set_card", "set_tr", "r1", "r2"]:
-            self.w[k].configure(bg=card)
-        self.w["set_title"].configure(bg=card, fg=acc)
-        dot2 = self.w["set_dot"]
-        dot2.configure(bg=card)
-        dot2.delete("all")
-        dot2.create_oval(1, 1, 7, 7, fill=self._c("accent2"), outline="")
+        # Buttons that are not the big one
+        for key in ("rec_btn", "clr_btn", "undo_btn"):
+            button = self.w[key]
+            on_accent = key in self.w.get("_accent_buttons", ())
+            button.configure(bg=accent if on_accent else field,
+                             fg=self._c("on_accent") if on_accent else dim,
+                             activebackground=self._c("accent_hover"),
+                             activeforeground=self._c("on_accent"))
 
-        self.w["ct_lbl"].configure(bg=card, fg=tl)
-        self.w["mb_lbl"].configure(bg=card, fg=tl)
+        # Hotkeys
+        for key in ("hk_row", "hk_left", "hk_right"):
+            self.w[key].configure(bg=bg)
+        for key in ("hk_lbl", "rec_hk_lbl"):
+            self.w[key].configure(bg=bg, fg=dim)
+        for key in ("hk_btn", "rec_hk_btn"):
+            self.w[key].configure(bg=field, fg=accent,
+                                  activebackground=accent,
+                                  activeforeground=self._c("on_accent"))
 
-        for rb, _ in self.ct_rbs + self.mb_rbs:
-            rb.configure(bg=card, fg=t1, selectcolor=inp,
-                         activebackground=card, activeforeground=acc)
-
-        # Hotkey row
-        for k in ["hk_row", "hk_left", "hk_right"]:
-            self.w[k].configure(bg=bg)
-        for k in ["hk_lbl", "rec_hk_lbl"]:
-            self.w[k].configure(bg=bg, fg=tl)
-        for k in ["hk_btn", "rec_hk_btn"]:
-            self.w[k].configure(bg=inp, fg=self._c("accent_gold"),
-                                activebackground=acc, activeforeground="#ffffff")
-
-        # Button
+        # Start button
         self.w["bf"].configure(bg=bg)
         self._draw_btn()
 
         # Status
-        self.w["st_outer"].configure(bg=brd)
-        for k in ["st_inner", "st_left", "st_right"]:
-            self.w[k].configure(bg=card)
         self._draw_st_dot()
-        self.w["st_lbl"].configure(bg=card,
-                                    fg=self._c("green") if self.clicking else t2)
-        self.w["cnt_lbl"].configure(bg=card, fg=t2)
-        self.w["cnt_val"].configure(bg=card, fg=self._c("accent_gold"))
+        self.w["st_lbl"].configure(
+            bg=surface,
+            fg=self._c("success") if self.clicking else dim)
+        self.w["cnt_lbl"].configure(bg=surface, fg=self._c("text_faint"))
+        self.w["cnt_val"].configure(bg=surface, fg=text)
 
-        # Pattern card
-        self.w["pat_outer"].configure(bg=brd)
-        for k in ["pat_card", "pat_tr", "pat_row"]:
-            self.w[k].configure(bg=card)
-        self.w["pat_title"].configure(bg=card, fg=acc)
-        pdot = self.w["pat_dot"]
-        pdot.configure(bg=card)
-        pdot.delete("all")
-        pdot.create_oval(1, 1, 7, 7, fill=acc, outline="")
-        self.w["pat_count"].configure(bg=card, fg=t2)
-        self.w["pat_hint"].configure(bg=card, fg=t2)
-        self.w["rec_btn"].configure(bg=inp, activebackground=acc, activeforeground="#ffffff")
-        for k in ["clr_btn", "undo_btn"]:
-            self.w[k].configure(bg=inp, fg=t2, activebackground=acc,
-                                activeforeground="#ffffff")
-        self.w["pat_list"].configure(bg=inp, fg=t1, selectbackground=inp,
-                                     selectforeground=t1)
-
-        # Repeat card
-        self.w["rep_outer"].configure(bg=brd)
-        for k in ["rep_card", "rep_tr", "rep_r1", "rep_r2", "rep_r3"]:
-            self.w[k].configure(bg=card)
-        self.w["rep_title"].configure(bg=card, fg=acc)
-        rdot = self.w["rep_dot"]
-        rdot.configure(bg=card)
-        rdot.delete("all")
-        rdot.create_oval(1, 1, 7, 7, fill=self._c("accent2"), outline="")
-        for k in ["rb_forever", "rb_duration"]:
-            self.w[k].configure(bg=card, fg=t1, selectcolor=inp,
-                                activebackground=card, activeforeground=acc)
-        for key in ["hours", "minutes", "seconds"]:
-            self.w[f"dur_{key}"].configure(bg=inp, fg=acc, insertbackground=acc)
-            self.w[f"durl_{key}"].configure(bg=card, fg=t2)
-        self.w["gap_lbl"].configure(bg=card, fg=tl)
-        self.w["gap_entry"].configure(bg=inp, fg=acc, insertbackground=acc)
-        self.w["gap_unit"].configure(bg=card, fg=t2)
-
-        # Mode tabs
-        self.w["mode_bar"].configure(bg=bg)
-        self._style_mode_tabs()
+        self._sync_repeat_fields()
         self._refresh_pattern_ui()
-
-        # Administrator notice
-        tone = self._c("green") if self.elevated else self._c("accent_gold")
-        self.w["adm_outer"].configure(bg=brd)
-        for k in ["adm_inner", "adm_row"]:
-            self.w[k].configure(bg=card)
-        adot = self.w["adm_dot"]
-        adot.configure(bg=card)
-        adot.delete("all")
-        adot.create_oval(1, 1, 9, 9, fill=tone, outline="")
-        self.w["adm_lbl"].configure(bg=card, fg=tone)
-        if not self.elevated:
-            self.w["adm_hint"].configure(bg=card, fg=t2)
-            self.w["adm_btn"].configure(bg=inp, fg=self._c("accent"),
-                                        activebackground=acc, activeforeground="#ffffff")
 
     # =========================================================================
     #  LANGUAGE & THEME SWITCHING
@@ -970,64 +772,54 @@ class AutoClicker:
         self.theme = "light" if self.theme == "dark" else "dark"
         self._apply_theme()
 
+    def _on_lang_var(self):
+        self._set_lang(self.v_lang.get())
+
     def _set_lang(self, code):
         if code == self.lang:
             return
         self.lang = code
-
-        for c, btn in self.lang_btns.items():
-            self._style_lang_btn(btn, c)
+        if self.v_lang.get() != code:
+            self.v_lang.set(code)
 
         self.w["sub"].config(text=self._t("subtitle"))
-        self.w["lang_lbl"].config(text=self._t("lang"))
-        self.w["theme_lbl"].config(text=self._t("theme"))
-        self.w["int_title"].config(text=self._t("interval_title"))
-        self.w["set_title"].config(text=self._t("settings_title"))
-
-        for key in ["hours", "minutes", "seconds", "milliseconds"]:
-            self.w[f"l_{key}"].config(text=self._t(key))
-
-        self.w["ct_lbl"].config(text=self._t("click_type"))
-        self.w["mb_lbl"].config(text=self._t("mouse_btn"))
-        self.w["hk_lbl"].config(text=self._t("hotkey"))
-        self.w["rec_hk_lbl"].config(text=self._t("rec_hotkey"))
-
-        for rb, key in self.ct_rbs:
-            rb.config(text=self._t(key))
-        for rb, key in self.mb_rbs:
-            rb.config(text=self._t(key))
-
-        self._draw_btn()
-
-        if self.clicking:
-            sk = "holding" if self.holding else "running"
-            self.w["st_lbl"].config(text=self._t(sk))
-        else:
-            self.w["st_lbl"].config(text=self._t("stopped"))
-
-        self.w["cnt_lbl"].config(text=self._t("clicks"))
-
-        for key, btn in self.mode_btns.items():
-            btn.config(text=self._t(f"mode_{key}"))
-        self.w["pat_title"].config(text=self._t("pattern_title"))
+        self.w["int_title"].config(text=self._upper(self._t("interval_title")))
+        self.w["set_title"].config(text=self._upper(self._t("settings_title")))
+        self.w["rep_title"].config(text=self._upper(self._t("repeat_title")))
+        self.w["pat_title"].config(text=self._upper(self._t("pattern_title")))
         self.w["pat_hint"].config(text=self._t("pattern_hint"))
         self.w["clr_btn"].config(text=self._t("clear"))
         self.w["undo_btn"].config(text=self._t("undo"))
-        self.w["rep_title"].config(text=self._t("repeat_title"))
-        self.w["rb_forever"].config(text=self._t("repeat_forever"))
-        self.w["rb_duration"].config(text=self._t("repeat_duration"))
+        self.w["hk_lbl"].config(text=self._t("hotkey"))
+        self.w["rec_hk_lbl"].config(text=self._t("rec_hotkey"))
+        self.w["cnt_lbl"].config(text=self._t("clicks"))
+
+        for key in ("hours", "minutes", "seconds", "milliseconds"):
+            self.w[f"l_{key}"].config(text=self._t(key))
+        for key in ("hours", "minutes", "seconds"):
+            self.w[f"l_dur_{key}"].config(text=self._t(key))
         self.w["gap_lbl"].config(text=self._t("repeat_gap"))
-        self.w["gap_unit"].config(text=self._t("milliseconds"))
-        for key in ["hours", "minutes", "seconds"]:
-            self.w[f"durl_{key}"].config(text=self._t(key))
+        self.w["l_gap"].config(text=self._t("milliseconds"))
+
+        self.w["mode_seg"].set_options(
+            [("clicker", self._t("mode_clicker")), ("pattern", self._t("mode_pattern"))])
+        self.w["ct_seg"].set_options([(key, self._t(key)) for key in CLICK_KEYS])
+        self.w["mb_seg"].set_options([(key, self._t(key)) for key in MBTN_KEYS])
+        self.w["rep_seg"].set_options(
+            [("forever", self._t("repeat_forever")),
+             ("duration", self._t("repeat_duration"))])
+
+        self._draw_btn()
+        if self.clicking:
+            key = "pattern_running" if self.mode == "pattern" else "running"
+            self.w["st_lbl"].config(text=self._t(key))
+        elif self.recording:
+            self.w["st_lbl"].config(text=self._t("recording"))
+        else:
+            self.w["st_lbl"].config(text=self._t("stopped"))
+
         self._refresh_pattern_ui()
         self._fit_window()
-
-        self.w["adm_lbl"].config(
-            text=self._t("admin_ok" if self.elevated else "admin_warn"))
-        if not self.elevated:
-            self.w["adm_hint"].config(text=self._t("admin_hint"))
-            self.w["adm_btn"].config(text=self._t("run_as_admin"))
 
     # =========================================================================
     #  CLICK LOGIC
