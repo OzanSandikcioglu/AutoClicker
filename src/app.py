@@ -23,7 +23,7 @@ from src.pattern import PatternRecorder
 
 
 class AutoClicker:
-    WIDTH, HEIGHT = 440, 726
+    WIDTH, HEIGHT = 440, 772
     MIN_INTERVAL = 0.001      # fastest the interval boxes may ask for
     DEFAULT_INTERVAL = 0.1    # used when every box is empty or zero
     MOVE_SETTLE = 0.015       # let a window notice the pointer before clicking
@@ -485,7 +485,20 @@ class AutoClicker:
         else:
             self.w["hk_right"].pack_forget()
         self._style_mode_tabs()
+        self._fit_window()
         self._draw_btn()
+
+    def _fit_window(self):
+        """Height follows the mode. The pattern cards need noticeably more room
+        than the clicker ones, and one fixed height leaves the other mode
+        looking half empty - or clips this one."""
+        try:
+            self.root.update_idletasks()
+            need = (self.w["main"].winfo_reqheight()
+                    + self.w["top_line"].winfo_reqheight())
+            self.root.geometry(f"{self.WIDTH}x{max(need, 400)}")
+        except tk.TclError:
+            pass
 
     # --- Pattern card ---------------------------------------------------------
 
@@ -1002,6 +1015,7 @@ class AutoClicker:
         for key in ["hours", "minutes", "seconds"]:
             self.w[f"durl_{key}"].config(text=self._t(key))
         self._refresh_pattern_ui()
+        self._fit_window()
 
         self.w["adm_lbl"].config(
             text=self._t("admin_ok" if self.elevated else "admin_warn"))
